@@ -85,6 +85,7 @@ export class CodeChunker {
             endLine: chunkEndLine,
             hash: this.hash(chunkContent),
             size: Buffer.byteLength(chunkContent, "utf-8"),
+            embedding: [],
           });
 
           // 保留重叠行
