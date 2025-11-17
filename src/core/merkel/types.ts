@@ -7,6 +7,7 @@ export interface CodeChunk {
   endLine: number; // 结束行号
   hash: string; // chunk 的哈希值
   size: number; // chunk 的大小（字节）
+  embedding: number[]; // chunk 的文本嵌入向量
 }
 
 export interface MerkleNodeData {

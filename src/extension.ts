@@ -2,6 +2,8 @@
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from "vscode";
 import Workspace from "@/core/workspace";
+import { QdrantClient } from "@/core/qdrant";
+import { OpenAIClient } from "@/core/openai";
 
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
@@ -68,25 +70,59 @@ export function activate(context: vscode.ExtensionContext) {
 
             // 获取所有 chunks
             const allChunks = workspace.getAllCodeChunks();
-            console.log(`\n总共生成 ${allChunks.length} 个代码块`);
+            console.log(
+              `\n总共生成的 chunks 数: ${allChunks.length}, 以及 chunks 详情\n`
+            );
+            console.log(allChunks);
 
-            // 按文件分组显示前几个 chunks
-            const codeFiles = workspace.getCodeFiles();
-            console.log("\n=== 代码块示例 (前3个文件) ===");
-            codeFiles.slice(0, 3).forEach((file) => {
-              const chunks = workspace.getCodeChunksByFile(file.relativePath);
-              if (chunks) {
-                console.log(`\n文件: ${file.relativePath}`);
-                console.log(`  Chunks: ${chunks.length} 个`);
-                chunks.forEach((chunk, idx) => {
-                  console.log(
-                    `    [${idx + 1}] ${chunk.id} (${chunk.size}B, 行 ${
-                      chunk.startLine
-                    }-${chunk.endLine})`
+            // 创建文本嵌入
+            progress.report({ message: "正在生成文本嵌入..." });
+            console.log("\n=== 生成文本嵌入 ===");
+
+            for (let i = 0; i < allChunks.length; i++) {
+              const chunk = allChunks[i];
+              try {
+                const embedding =
+                  await OpenAIClient.initialize().createEmbedding(
+                    chunk.content
                   );
-                });
+                if (embedding) {
+                  chunk.embedding = embedding;
+                  console.log(
+                    `  [${i + 1}/${allChunks.length}] ${chunk.id} 嵌入生成成功`
+                  );
+                }
+              } catch (error) {
+                console.error(
+                  `  [${i + 1}/${allChunks.length}] ${chunk.id} 嵌入生成失败:`,
+                  error
+                );
               }
-            });
+            }
+
+            // 批量插入到 Qdrant
+            progress.report({ message: "正在插入向量数据库..." });
+            console.log("\n=== 插入向量数据库 ===");
+
+            const insertResult = await QdrantClient.batchInsertChunks(
+              allChunks
+            );
+
+            console.log("\n=== 插入结果 ===");
+            console.log(`成功: ${insertResult.success} 个`);
+            console.log(`失败: ${insertResult.failed} 个`);
+
+            if (insertResult.errors.length > 0) {
+              console.log("\n错误详情:");
+              insertResult.errors.slice(0, 10).forEach((err) => {
+                console.log(`  ${err.chunkId}: ${err.error}`);
+              });
+              if (insertResult.errors.length > 10) {
+                console.log(
+                  `  ... 还有 ${insertResult.errors.length - 10} 个错误`
+                );
+              }
+            }
 
             progress.report({ message: "代码索引构建完成！" });
 
@@ -112,6 +148,7 @@ export function activate(context: vscode.ExtensionContext) {
     }
   );
 
+  // 添加命令：修复代码
   context.subscriptions.push(codeIndexingDisposable);
 }
 

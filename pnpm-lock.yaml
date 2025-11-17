@@ -8,9 +8,15 @@ importers:
 
   .:
     dependencies:
+      '@qdrant/js-client-rest':
+        specifier: ^1.15.1
+        version: 1.15.1(typescript@5.9.3)
       ignore:
         specifier: ^7.0.5
         version: 7.0.5
+      openai:
+        specifier: ^6.9.0
+        version: 6.9.0
     devDependencies:
       '@types/mocha':
         specifier: ^10.0.10
@@ -292,6 +298,19 @@ packages:
   '@pkgjs/parseargs@0.11.0':
     resolution: {integrity: sha512-+1VkjdD0QBLPodGrJUeqarH8VAIvQODIbwh9XpP5Syisf7YoQgsJKPNFoqqLQlu+VQ/tVSshMR6loPMn8U+dPg==}
     engines: {node: '>=14'}
+
+  '@qdrant/js-client-rest@1.15.1':
+    resolution: {integrity: sha512-FAPMz6Z7RFj9vUun8R9e8SYcX6EkZtdfYfnh5lFXWcjEaat9q/jce1baAJCWAr3k8yHh62HpzCRYOatLVII28g==}
+    engines: {node: '>=18.17.0', pnpm: '>=8'}
+    peerDependencies:
+      typescript: '>=4.7'
+
+  '@qdrant/openapi-typescript-fetch@1.2.6':
+    resolution: {integrity: sha512-oQG/FejNpItrxRHoyctYvT3rwGZOnK4jr3JdppO/c78ktDvkWiPXPHNsrDf33K9sZdRb6PR7gi4noIapu5q4HA==}
+    engines: {node: '>=18.0.0', pnpm: '>=8'}
+
+  '@sevinf/maybe@0.5.0':
+    resolution: {integrity: sha512-ARhyoYDnY1LES3vYI0fiG6e9esWfTNcXcO6+MPJJXcnyMV3bim4lnFt45VXouV7y82F4x3YH8nOQ6VztuvUiWg==}
 
   '@types/estree@1.0.8':
     resolution: {integrity: sha512-dWHzHa2WqEXI/O1E9OjrocMTKJl2mSrEolh1Iomrv6U+JuNwaHXsXx9bLu5gG7BUWFIN0skIQJQ/L1rIex4X6w==}
@@ -1175,6 +1194,18 @@ packages:
     resolution: {integrity: sha512-VXJjc87FScF88uafS3JllDgvAm+c/Slfz06lorj2uAY34rlUu0Nt+v8wreiImcrgAjjIHp1rXpTDlLOGw29WwQ==}
     engines: {node: '>=18'}
 
+  openai@6.9.0:
+    resolution: {integrity: sha512-n2sJRYmM+xfJ0l3OfH8eNnIyv3nQY7L08gZQu3dw6wSdfPtKAk92L83M2NIP5SS8Cl/bsBBG3yKzEOjkx0O+7A==}
+    hasBin: true
+    peerDependencies:
+      ws: ^8.18.0
+      zod: ^3.25 || ^4.0
+    peerDependenciesMeta:
+      ws:
+        optional: true
+      zod:
+        optional: true
+
   optionator@0.9.4:
     resolution: {integrity: sha512-6IpQ7mKUxRcZNLIObR0hz7lxsapSSIYNZJwXPGeF0mTVqGKFIXj1DQcMoT22S3ROcLyY/rz0PWaWZ9ayWmad9g==}
     engines: {node: '>= 0.8.0'}
@@ -1545,6 +1576,10 @@ packages:
   undici-types@6.21.0:
     resolution: {integrity: sha512-iwDZqg0QAGrg9Rav5H4n0M64c3mkR59cJ6wQp+7C4nI0gsmExaedaYLNO44eT4AtBBwjbTiGPMlt2Md0T9H9JQ==}
 
+  undici@6.22.0:
+    resolution: {integrity: sha512-hU/10obOIu62MGYjdskASR3CUAiYaFTtC9Pa6vHyf//mAipSvSQg6od2CnJswq7fvzNS3zJhxoRkgNVaHurWKw==}
+    engines: {node: '>=18.17'}
+
   uri-js@4.4.1:
     resolution: {integrity: sha512-7rKUyy33Q1yc98pQ1DAmLtwX109F7TIfWlW1Ydo8Wl1ii1SeHieeh0HHfPeL2fMXK6z0s8ecKs9frCuLJvndBg==}
 
@@ -1791,6 +1826,17 @@ snapshots:
 
   '@pkgjs/parseargs@0.11.0':
     optional: true
+
+  '@qdrant/js-client-rest@1.15.1(typescript@5.9.3)':
+    dependencies:
+      '@qdrant/openapi-typescript-fetch': 1.2.6
+      '@sevinf/maybe': 0.5.0
+      typescript: 5.9.3
+      undici: 6.22.0
+
+  '@qdrant/openapi-typescript-fetch@1.2.6': {}
+
+  '@sevinf/maybe@0.5.0': {}
 
   '@types/estree@1.0.8': {}
 
@@ -2846,6 +2892,8 @@ snapshots:
     dependencies:
       mimic-function: 5.0.1
 
+  openai@6.9.0: {}
+
   optionator@0.9.4:
     dependencies:
       deep-is: 0.1.4
@@ -3270,6 +3318,8 @@ snapshots:
       which-boxed-primitive: 1.1.1
 
   undici-types@6.21.0: {}
+
+  undici@6.22.0: {}
 
   uri-js@4.4.1:
     dependencies:

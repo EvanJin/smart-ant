@@ -17,7 +17,45 @@
         "command": "smart-ant.codeIndexing",
         "title": "Smart Ant: 代码索引"
       }
-    ]
+    ],
+    "configuration": {
+      "title": "Smart Ant",
+      "properties": {
+        "smart-ant.openaiApiKey": {
+          "type": "string",
+          "default": "***REMOVED***",
+          "description": "OpenAI API Key"
+        },
+        "smart-ant.openaiBaseURL": {
+          "type": "string",
+          "default": "***REMOVED***",
+          "description": "OpenAI API Base URL"
+        },
+        "smart-ant.openaiModel": {
+          "type": "string",
+          "default": "text-embedding-3-small",
+          "enum": [
+            "text-embedding-3-small",
+            "text-embedding-3-large"
+          ],
+          "description": "OpenAI 模型"
+        },
+        "smart-ant.openaiTemperature": {
+          "type": "number",
+          "default": 0.7,
+          "minimum": 0,
+          "maximum": 2,
+          "description": "OpenAI Temperature (0-2)"
+        },
+        "smart-ant.openaiMaxTokens": {
+          "type": "number",
+          "default": 2000,
+          "minimum": 1,
+          "maximum": 4096,
+          "description": "OpenAI Max Tokens"
+        }
+      }
+    }
   },
   "scripts": {
     "vscode:prepublish": "pnpm run package",
@@ -46,6 +84,8 @@
     "typescript-eslint": "^8.46.3"
   },
   "dependencies": {
-    "ignore": "^7.0.5"
+    "@qdrant/js-client-rest": "^1.15.1",
+    "ignore": "^7.0.5",
+    "openai": "^6.9.0"
   }
 }
