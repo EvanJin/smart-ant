@@ -148,8 +148,120 @@ export function activate(context: vscode.ExtensionContext) {
     }
   );
 
-  // 添加命令：修复代码
-  context.subscriptions.push(codeIndexingDisposable);
+  // 添加命令：搜索代码
+  const searchCodeDisposable = vscode.commands.registerCommand(
+    "smart-ant.searchCode",
+    async () => {
+      try {
+        // 1. 获取用户输入的搜索查询
+        const query = await vscode.window.showInputBox({
+          prompt: "请输入搜索内容（描述你想找的代码功能）",
+          placeHolder: "例如：文件上传功能、数据库连接、API 请求等",
+        });
+
+        if (!query) {
+          return;
+        }
+
+        // 2. 显示进度
+        await vscode.window.withProgress(
+          {
+            location: vscode.ProgressLocation.Notification,
+            title: "Smart Ant",
+            cancellable: false,
+          },
+          async (progress) => {
+            progress.report({ message: "正在搜索代码..." });
+
+            // 3. 使用 Qdrant 搜索
+            const results = await QdrantClient.searchByText(
+              query,
+              10,
+              async (text) => {
+                return await OpenAIClient.initialize().createEmbedding(text);
+              }
+            );
+
+            if (results.length === 0) {
+              vscode.window.showInformationMessage(
+                "未找到相关代码，请尝试其他关键词"
+              );
+              return;
+            }
+
+            // 4. 在控制台显示结果
+            console.log(`\n=== 搜索结果: "${query}" ===`);
+            console.log(`找到 ${results.length} 个相关代码块:\n`);
+
+            results.forEach((result, idx) => {
+              const { chunk, score } = result;
+              console.log(`[${idx + 1}] 相似度: ${(score * 100).toFixed(2)}%`);
+              console.log(`    文件: ${chunk.relativePath}`);
+              console.log(`    位置: 行 ${chunk.startLine}-${chunk.endLine}`);
+              console.log(`    大小: ${chunk.size}B`);
+              console.log(`    内容预览:`);
+              const preview = chunk.content
+                .split("\n")
+                .slice(0, 3)
+                .map((line) => `      ${line}`)
+                .join("\n");
+              console.log(preview);
+              console.log("");
+            });
+
+            // 5. 创建结果文档
+            const resultContent = [
+              `# 代码搜索结果`,
+              ``,
+              `**查询**: ${query}`,
+              `**找到**: ${results.length} 个相关代码块`,
+              ``,
+              ...results.map((result, idx) => {
+                const { chunk, score } = result;
+                return [
+                  `## ${idx + 1}. ${chunk.relativePath} (相似度: ${(
+                    score * 100
+                  ).toFixed(2)}%)`,
+                  ``,
+                  `- **位置**: 行 ${chunk.startLine}-${chunk.endLine}`,
+                  `- **大小**: ${chunk.size} 字节`,
+                  `- **哈希**: ${chunk.hash.substring(0, 16)}...`,
+                  ``,
+                  `### 代码内容`,
+                  ``,
+                  "```" + (chunk.relativePath.split(".").pop() || "text"),
+                  chunk.content,
+                  "```",
+                  ``,
+                ].join("\n");
+              }),
+            ].join("\n");
+
+            // 6. 在新编辑器中显示结果
+            const doc = await vscode.workspace.openTextDocument({
+              content: resultContent,
+              language: "markdown",
+            });
+            await vscode.window.showTextDocument(doc);
+
+            // 7. 显示成功消息
+            vscode.window.showInformationMessage(
+              `找到 ${results.length} 个相关代码块`
+            );
+          }
+        );
+      } catch (error) {
+        console.error("搜索代码失败:", error);
+        vscode.window.showErrorMessage(
+          `搜索代码失败: ${
+            error instanceof Error ? error.message : String(error)
+          }`
+        );
+      }
+    }
+  );
+
+  context.subscriptions.push(codeIndexingDisposable, searchCodeDisposable);
 }
 
 // This method is called when your extension is deactivated

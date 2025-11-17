@@ -16,6 +16,10 @@
       {
         "command": "smart-ant.codeIndexing",
         "title": "Smart Ant: 代码索引"
+      },
+      {
+        "command": "smart-ant.searchCode",
+        "title": "Smart Ant: 搜索代码"
       }
     ],
     "configuration": {

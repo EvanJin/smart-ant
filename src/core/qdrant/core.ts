@@ -226,6 +226,208 @@ class QdrantCoreClient {
       throw error;
     }
   }
+
+  /**
+   * 搜索相似代码块
+   * @param embedding - 查询向量
+   * @param limit - 返回结果数量
+   * @returns 相似的代码块
+   */
+  public async searchSimilar(
+    embedding: number[],
+    limit: number = 10
+  ): Promise<CodeChunk[]> {
+    if (!this.isInitialized) {
+      await this.initialize();
+    }
+
+    try {
+      const results = await this.client.search(this.collectionName, {
+        vector: embedding,
+        limit: limit,
+        with_payload: true,
+      });
+
+      return results.map((result) => result.payload as unknown as CodeChunk);
+    } catch (error) {
+      console.error("搜索失败:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * 根据文本查询相似代码块
+   * @param query - 查询文本
+   * @param limit - 返回结果数量
+   * @param generateEmbedding - 生成嵌入的函数
+   * @returns 相似的代码块及其相似度分数
+   */
+  public async searchByText(
+    query: string,
+    limit: number = 10,
+    generateEmbedding: (text: string) => Promise<number[]>
+  ): Promise<Array<{ chunk: CodeChunk; score: number }>> {
+    if (!this.isInitialized) {
+      await this.initialize();
+    }
+
+    try {
+      // 生成查询文本的嵌入向量
+      console.log(`正在为查询文本生成嵌入: "${query}"`);
+      const queryEmbedding = await generateEmbedding(query);
+
+      // 搜索相似代码块
+      const results = await this.client.search(this.collectionName, {
+        vector: queryEmbedding,
+        limit: limit,
+        with_payload: true,
+        with_vector: false,
+      });
+
+      return results.map((result) => ({
+        chunk: result.payload as unknown as CodeChunk,
+        score: result.score || 0,
+      }));
+    } catch (error) {
+      console.error("文本搜索失败:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * 根据文件路径搜索代码块
+   * @param relativePath - 相对路径
+   * @returns 代码块列表
+   */
+  public async searchByFile(relativePath: string): Promise<CodeChunk[]> {
+    if (!this.isInitialized) {
+      await this.initialize();
+    }
+
+    try {
+      const results = await this.client.scroll(this.collectionName, {
+        filter: {
+          must: [
+            {
+              key: "relativePath",
+              match: {
+                value: relativePath,
+              },
+            },
+          ],
+        },
+        limit: 100,
+        with_payload: true,
+      });
+
+      return results.points.map(
+        (point) => point.payload as unknown as CodeChunk
+      );
+    } catch (error) {
+      console.error("按文件搜索失败:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * 混合搜索：结合语义搜索和关键词过滤
+   * @param query - 查询文本
+   * @param filters - 过滤条件（如文件路径、语言等）
+   * @param limit - 返回结果数量
+   * @param generateEmbedding - 生成嵌入的函数
+   * @returns 搜索结果
+   */
+  public async hybridSearch(
+    query: string,
+    filters: {
+      filePath?: string;
+      minLine?: number;
+      maxLine?: number;
+    },
+    limit: number = 10,
+    generateEmbedding: (text: string) => Promise<number[]>
+  ): Promise<Array<{ chunk: CodeChunk; score: number }>> {
+    if (!this.isInitialized) {
+      await this.initialize();
+    }
+
+    try {
+      const queryEmbedding = await generateEmbedding(query);
+
+      // 构建过滤条件
+      const must: any[] = [];
+      if (filters.filePath) {
+        must.push({
+          key: "relativePath",
+          match: {
+            value: filters.filePath,
+          },
+        });
+      }
+      if (filters.minLine !== undefined) {
+        must.push({
+          key: "startLine",
+          range: {
+            gte: filters.minLine,
+          },
+        });
+      }
+      if (filters.maxLine !== undefined) {
+        must.push({
+          key: "endLine",
+          range: {
+            lte: filters.maxLine,
+          },
+        });
+      }
+
+      const results = await this.client.search(this.collectionName, {
+        vector: queryEmbedding,
+        limit: limit,
+        with_payload: true,
+        filter: must.length > 0 ? { must } : undefined,
+      });
+
+      return results.map((result) => ({
+        chunk: result.payload as unknown as CodeChunk,
+        score: result.score || 0,
+      }));
+    } catch (error) {
+      console.error("混合搜索失败:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * 获取配置
+   */
+  public getConfig() {
+    return {
+      collectionName: this.collectionName,
+      vectorSize: this.vectorSize,
+      batchSize: this.batchSize,
+      isInitialized: this.isInitialized,
+    };
+  }
+
+  /**
+   * 清空集合
+   */
+  public async clearCollection(): Promise<void> {
+    if (!this.isInitialized) {
+      await this.initialize();
+    }
+
+    try {
+      await this.client.deleteCollection(this.collectionName);
+      this.isInitialized = false;
+      await this.initialize();
+      console.log(`集合 ${this.collectionName} 已清空并重新创建`);
+    } catch (error) {
+      console.error("清空集合失败:", error);
+      throw error;
+    }
+  }
 }
 
 export default new QdrantCoreClient();
