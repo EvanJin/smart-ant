@@ -146,24 +146,6 @@ class Workspace {
   }
 
   /**
-   * 打印所有文件信息
-   */
-  public printAllFiles(): void {
-    const files = this.getAllFiles();
-    console.log(`\n工作区: ${this.path}`);
-    console.log(`总共找到 ${files.length} 个文件/目录:\n`);
-
-    files.forEach((file) => {
-      const type = file.isDirectory ? "[目录]" : "[文件]";
-      console.log(`${type} ${file.relativePath}`);
-    });
-
-    const fileCount = files.filter((f) => !f.isDirectory).length;
-    const dirCount = files.filter((f) => f.isDirectory).length;
-    console.log(`\n统计: ${fileCount} 个文件, ${dirCount} 个目录`);
-  }
-
-  /**
    * 构建代码索引（Merkle 树）
    */
   public buildCodeIndex(chunkConfig?: Partial<ChunkConfig>): MerkleTreeStats {
