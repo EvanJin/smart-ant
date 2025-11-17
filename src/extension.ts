@@ -189,27 +189,7 @@ export function activate(context: vscode.ExtensionContext) {
               return;
             }
 
-            // 4. 在控制台显示结果
-            console.log(`\n=== 搜索结果: "${query}" ===`);
-            console.log(`找到 ${results.length} 个相关代码块:\n`);
-
-            results.forEach((result, idx) => {
-              const { chunk, score } = result;
-              console.log(`[${idx + 1}] 相似度: ${(score * 100).toFixed(2)}%`);
-              console.log(`    文件: ${chunk.relativePath}`);
-              console.log(`    位置: 行 ${chunk.startLine}-${chunk.endLine}`);
-              console.log(`    大小: ${chunk.size}B`);
-              console.log(`    内容预览:`);
-              const preview = chunk.content
-                .split("\n")
-                .slice(0, 3)
-                .map((line) => `      ${line}`)
-                .join("\n");
-              console.log(preview);
-              console.log("");
-            });
-
-            // 5. 创建结果文档
+            // 4. 创建结果文档
             const resultContent = [
               `# 代码搜索结果`,
               ``,
