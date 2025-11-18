@@ -25,3 +25,8 @@ export interface MerkleTreeStats {
   rootHash: string; // 根哈希
   buildTime: number; // 构建时间（毫秒）
 }
+
+export interface SearchResult {
+  chunks: CodeChunk[];
+  score: number;
+}

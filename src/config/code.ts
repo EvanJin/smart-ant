@@ -95,3 +95,39 @@ export const CODE_EXTENSIONS = new Set([
   ".proto",
   ".thrift",
 ]);
+
+/**
+ * 默认忽略的文件和目录列表
+ * 这些文件/目录在遍历工作区时会被自动跳过
+ * 包括：
+ * - 版本控制目录（.git, .svn, .hg, .bzr）
+ * - IDE 配置目录（.idea, .vscode）
+ * - 系统文件（.DS_Store）
+ * - 环境变量文件（.env*）
+ * - 依赖锁文件（yarn.lock, package-lock.json, pnpm-lock.yaml, bun.lockb）
+ */
+export const DEFAULT_IGNORE_FILES = new Set([
+  ".git",
+  ".svn",
+  ".hg",
+  ".bzr",
+  ".idea",
+  ".vscode",
+  ".DS_Store",
+  ".env",
+  ".env.local",
+  ".env.development.local",
+  "yarn.lock",
+  "package-lock.json",
+  "pnpm-lock.yaml",
+  "bun.lockb",
+  "package-lock.json",
+  "pnpm-lock.yaml",
+  "bun.lockb",
+  "package-lock.json",
+  "pnpm-lock.yaml",
+  "bun.lockb",
+  "package-lock.json",
+  "pnpm-lock.yaml",
+  "bun.lockb",
+]);

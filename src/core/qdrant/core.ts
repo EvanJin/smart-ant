@@ -1,33 +1,39 @@
 import { QdrantClient } from "@qdrant/js-client-rest";
 import { CodeChunk } from "@/core/merkel/types";
 import crypto from "crypto";
-
-/**
- * Qdrant 配置接口
- */
-export interface QdrantConfig {
-  url?: string;
-  apiKey?: string;
-  collectionName?: string;
-  vectorSize?: number;
-  batchSize?: number;
-}
-
-/**
- * 批量插入结果
- */
-export interface BatchInsertResult {
-  success: number;
-  failed: number;
-  errors: Array<{ chunkId: string; error: string }>;
-}
+import { QdrantConfig, BatchInsertResult } from "./types";
+import { camelCase } from "lodash";
 
 class QdrantCoreClient {
+  /**
+   * Qdrant 客户端
+   */
   private client: QdrantClient;
+
+  /**
+   * 集合名称
+   */
   private collectionName: string = "smart-ant-code-chunks";
+
+  /**
+   * 向量维度
+   */
   private vectorSize: number = 1536; // text-embedding-3-small 的维度
-  private batchSize: number = 100; // 每批次处理的数量
+
+  /**
+   * 每批次处理的数量
+   */
+  private batchSize: number = 100;
+
+  /**
+   * 是否已初始化
+   */
   private isInitialized: boolean = false;
+
+  /**
+   * 仓库名称
+   */
+  private repo: string | undefined;
 
   constructor(config?: QdrantConfig) {
     this.client = new QdrantClient({
@@ -39,14 +45,16 @@ class QdrantCoreClient {
         "***REMOVED***",
     });
 
-    if (config?.collectionName) {
-      this.collectionName = config.collectionName;
-    }
     if (config?.vectorSize) {
       this.vectorSize = config.vectorSize;
     }
+
     if (config?.batchSize) {
       this.batchSize = config.batchSize;
+    }
+
+    if (config?.repo) {
+      this.collectionName = config.repo;
     }
   }
 
@@ -66,6 +74,14 @@ class QdrantCoreClient {
       console.error("Qdrant 客户端初始化失败:", error);
       throw error;
     }
+  }
+
+  /**
+   * 设置集合名称
+   * @param name - 集合名称
+   */
+  public setCollectionName(name: string): void {
+    this.collectionName = name;
   }
 
   /**
@@ -195,11 +211,11 @@ class QdrantCoreClient {
       vector: chunk.embedding,
       payload: {
         id: chunk.id,
-        filePath: chunk.filePath,
-        relativePath: chunk.relativePath,
+        file_path: chunk.filePath,
+        relative_path: chunk.relativePath,
         content: chunk.content,
-        startLine: chunk.startLine,
-        endLine: chunk.endLine,
+        start_line: chunk.startLine,
+        end_line: chunk.endLine,
         hash: chunk.hash,
         size: chunk.size,
       },
@@ -285,7 +301,10 @@ class QdrantCoreClient {
       });
 
       return results.map((result) => ({
-        chunk: result.payload as unknown as CodeChunk,
+        chunk: Object.keys(result.payload || {}).reduce(
+          (acc, key) => ({ ...acc, [camelCase(key)]: result.payload?.[key] }),
+          {} as CodeChunk
+        ),
         score: result.score || 0,
       }));
     } catch (error) {

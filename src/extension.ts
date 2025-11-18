@@ -22,18 +22,6 @@ export function activate(context: vscode.ExtensionContext) {
   // 默认只遍历代码文件
   workspace = new Workspace(workspaceFolders[0].uri.fsPath, true);
 
-  // 获取 repo 信息并显示
-  workspace.getRepo().then((repo) => {
-    console.log(`Workspace repo: ${repo}`);
-    const isGitUrl = repo.startsWith("http") || repo.startsWith("git@");
-    const repoInfo = isGitUrl ? `Git: ${repo}` : `本地: ${repo}`;
-    
-    // 显示通知消息
-    vscode.window.showInformationMessage(
-      `Smart Ant 已启动 - 工程: ${workspace!.getWorkspaceName()} (${repoInfo})`
-    );
-  });
-
   // 添加命令：构建代码索引
   const codeIndexingDisposable = new CodeIndexingCommand(workspace).execute();
   if (codeIndexingDisposable) {

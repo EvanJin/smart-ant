@@ -1,5 +1,6 @@
 import * as vscode from "vscode";
 import fs from "fs";
+import crypto from "crypto";
 import path from "path";
 import ignore from "ignore";
 import { CODE_EXTENSIONS, DEFAULT_IGNORE_FILES } from "@/config/code";
@@ -28,7 +29,7 @@ class Workspace {
    * 获取当前工作目录的 git remote 地址
    * 如果 remote 不存在，则返回当前工作目录的根路径
    */
-  async getRepo(): Promise<string> {
+  private async getRepo(): Promise<string> {
     try {
       const gitExtension = vscode.extensions.getExtension("vscode.git");
 
@@ -77,6 +78,11 @@ class Workspace {
       console.error("Error getting git repo:", error);
       return this.path;
     }
+  }
+
+  async getRepoHash(): Promise<string> {
+    const repo = await this.getRepo();
+    return crypto.createHash("sha256").update(repo).digest("hex");
   }
 
   /**
