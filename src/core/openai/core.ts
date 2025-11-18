@@ -102,6 +102,70 @@ class OpenAIClient {
     });
     return response.data[0].embedding;
   }
+
+  /**
+   * 批量创建文本嵌入
+   * @param texts - 文本数组
+   * @param batchSize - 每批处理的数量（默认 100，OpenAI API 限制最大 2048）
+   * @returns 文本嵌入向量数组
+   */
+  public async createEmbeddings(
+    texts: string[],
+    batchSize: number = 100
+  ): Promise<number[][]> {
+    this.ensureInitialized();
+
+    const results: number[][] = [];
+    const totalBatches = Math.ceil(texts.length / batchSize);
+
+    console.log(
+      `开始批量生成 embedding，共 ${texts.length} 个文本，分 ${totalBatches} 批处理`
+    );
+
+    for (let i = 0; i < texts.length; i += batchSize) {
+      const batch = texts.slice(i, i + batchSize);
+      const batchIndex = Math.floor(i / batchSize) + 1;
+
+      try {
+        console.log(
+          `处理第 ${batchIndex}/${totalBatches} 批，包含 ${batch.length} 个文本`
+        );
+
+        const response = await this.client!.embeddings.create({
+          model: this.config.model!,
+          input: batch,
+        });
+
+        // 按顺序提取 embedding
+        const embeddings = response.data
+          .sort((a, b) => a.index - b.index)
+          .map((item) => item.embedding);
+
+        results.push(...embeddings);
+
+        console.log(
+          `第 ${batchIndex}/${totalBatches} 批处理完成，已生成 ${results.length}/${texts.length} 个 embedding`
+        );
+      } catch (error) {
+        console.error(`第 ${batchIndex} 批处理失败:`, error);
+        // 如果批量失败，尝试逐个处理该批次
+        console.log(`尝试逐个处理第 ${batchIndex} 批...`);
+        for (const text of batch) {
+          try {
+            const embedding = await this.createEmbedding(text);
+            results.push(embedding);
+          } catch (err) {
+            console.error("单个文本处理失败:", err);
+            // 添加空数组作为占位符
+            results.push([]);
+          }
+        }
+      }
+    }
+
+    console.log(`批量 embedding 生成完成，共 ${results.length} 个`);
+    return results;
+  }
 }
 
 // 导出单例
