@@ -11,7 +11,8 @@
       "request": "launch",
       "args": [
         "--extensionDevelopmentPath=${workspaceFolder}",
-        "/Users/evansjin/workspace/heimdallr"
+        // "/Users/evansjin/workspace/heimdallr"
+        "/Users/evansjin/workspace/go-test"
       ],
       "outFiles": ["${workspaceFolder}/dist/**/*.js"],
       "preLaunchTask": "${defaultBuildTask}"

@@ -81,7 +81,8 @@ class Workspace {
   }
 
   async getRepoHash(): Promise<string> {
-    return await this.getRepo();
+    const repo = await this.getRepo();
+    return repo.split("/").pop()!;
   }
 
   /**
