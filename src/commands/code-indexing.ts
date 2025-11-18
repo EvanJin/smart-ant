@@ -131,17 +131,17 @@ export class CodeIndexingCommand extends BaseCommand {
         // 显示成功消息
         const stats = this.workspace.getCodeIndexStats();
         if (stats) {
-          // vscode.window.showInformationMessage(
-          //   `代码索引构建完成！共 ${stats.totalFiles} 个文件，${stats.totalChunks} 个代码块`
-          // );
+          vscode.window.showInformationMessage(
+            `代码索引构建完成！共 ${stats.totalFiles} 个文件，${stats.totalChunks} 个代码块`
+          );
         }
       } catch (error) {
         console.error("构建代码索引失败:", error);
-        // vscode.window.showErrorMessage(
-        //   `构建代码索引失败: ${
-        //     error instanceof Error ? error.message : String(error)
-        //   }`
-        // );
+        vscode.window.showErrorMessage(
+          `构建代码索引失败: ${
+            error instanceof Error ? error.message : String(error)
+          }`
+        );
       }
     });
   }

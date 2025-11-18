@@ -48,7 +48,7 @@ export class SearchCommand extends BaseCommand {
               query,
               10,
               async (text) => {
-                return await OpenAIClient.initialize().createEmbedding(text);
+                return await OpenAIClient.createEmbedding(text);
               }
             );
 

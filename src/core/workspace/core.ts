@@ -35,7 +35,7 @@ class Workspace {
 
       if (!gitExtension) {
         console.warn("Git extension not found, returning workspace path");
-        return this.path;
+        return this.getWorkspaceName()!;
       }
 
       const git = gitExtension.isActive
@@ -46,7 +46,7 @@ class Workspace {
 
       if (!repos || repos.length === 0) {
         console.warn("No git repositories found, returning workspace path");
-        return this.path;
+        return this.getWorkspaceName()!;
       }
 
       // 查找匹配当前工作区路径的仓库
@@ -73,16 +73,15 @@ class Workspace {
       }
 
       console.warn("No remote URL found, returning workspace path");
-      return this.path;
+      return this.getWorkspaceName()!;
     } catch (error) {
       console.error("Error getting git repo:", error);
-      return this.path;
+      return this.getWorkspaceName()!;
     }
   }
 
   async getRepoHash(): Promise<string> {
-    const repo = await this.getRepo();
-    return crypto.createHash("sha256").update(repo).digest("hex");
+    return await this.getRepo();
   }
 
   /**

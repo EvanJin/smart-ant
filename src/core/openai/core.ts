@@ -86,7 +86,7 @@ class OpenAIClient {
    */
   private ensureInitialized(): void {
     if (!this.client) {
-      throw new Error("OpenAI 客户端未初始化，请先调用 initialize()");
+      this.initialize();
     }
   }
 
@@ -96,6 +96,7 @@ class OpenAIClient {
    * @returns 文本嵌入向量
    */
   public async createEmbedding(text: string): Promise<number[]> {
+    this.ensureInitialized();
     const response = await this.client!.embeddings.create({
       model: this.config.model!,
       input: text,
