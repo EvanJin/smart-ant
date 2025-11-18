@@ -144,6 +144,35 @@ const isValid = workspace.verifyCodeIndex();
 
 ## 开发
 
+### 使用 Makefile（推荐）
+
+```bash
+# 查看所有可用命令
+make help
+
+# 安装依赖
+make install
+
+# 编译项目
+make build
+
+# 监听模式
+make watch
+
+# 打包插件
+make package
+
+# 完整构建流程
+make all
+
+# 清理构建产物
+make clean
+```
+
+详细说明请查看 [Makefile 使用指南](./docs/MAKEFILE.md)
+
+### 使用 npm scripts
+
 ```bash
 # 安装依赖
 pnpm install
@@ -158,7 +187,7 @@ pnpm run watch
 pnpm run test
 
 # 打包
-pnpm run package
+pnpm run vsce:package
 ```
 
 ## 技术栈
