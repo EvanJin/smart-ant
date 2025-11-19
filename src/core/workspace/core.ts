@@ -11,16 +11,13 @@ import { injectable } from "inversify";
 
 @injectable()
 export class Workspace {
-  private path: string;
-  private ig: ReturnType<typeof ignore> | null = null;
-  private codeOnly: boolean = false;
-  private merkle: Merkle | null = null;
+  private path: string = "";
 
-  constructor(path: string, codeOnly: boolean = false) {
-    this.path = path;
-    this.codeOnly = codeOnly;
-    this.loadGitignore();
-  }
+  private ig: ReturnType<typeof ignore> | null = null;
+
+  private codeOnly: boolean = false;
+
+  private merkle: Merkle | null = null;
 
   /**
    * 初始化工作区

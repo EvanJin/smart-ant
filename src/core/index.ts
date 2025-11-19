@@ -12,9 +12,10 @@ const container = new Container({
 
 // 绑定核心组件
 container.bind(ConfigContainer).toSelf();
+container.bind(Workspace).toSelf();
+
 container.bind(OpenAIClient).toSelf();
 container.bind(QdrantCoreClient).toSelf();
-container.bind(Workspace).toSelf();
 
 // 绑定命令
 container.bind(CodeIndexingCommand).toSelf();

@@ -9,24 +9,22 @@ import { inject, injectable } from "inversify";
 export class CodeIndexingCommand extends BaseCommand {
   command = "smart-ant.codeIndexing";
 
-  @inject(Workspace) private readonly workspace!: Workspace;
-
-  @inject(QdrantCoreClient) private readonly qdrantClient!: QdrantCoreClient;
-
-  @inject(OpenAIClient) private readonly openaiClient!: OpenAIClient;
-
-  constructor() {
+  constructor(
+    @inject(Workspace) private readonly workspace: Workspace,
+    @inject(QdrantCoreClient) private readonly qdrantClient: QdrantCoreClient,
+    @inject(OpenAIClient) private readonly openaiClient: OpenAIClient
+  ) {
     super();
+    console.log("code indexing command constructor", this.workspace);
   }
 
   execute() {
-    console.log("execute code indexing command", this.workspace);
-    if (!this.workspace) {
-      vscode.window.showErrorMessage("未检测到工作区");
-      return null;
-    }
-
     return vscode.commands.registerCommand(this.command, async () => {
+      if (!this.workspace) {
+        vscode.window.showErrorMessage("未检测到工作区");
+        return;
+      }
+
       const repo = await this.workspace.getRepoHash();
 
       console.log(`Git 仓库信息获取成功: ${repo}`);

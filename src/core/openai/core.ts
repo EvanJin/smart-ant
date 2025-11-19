@@ -16,6 +16,8 @@ export class OpenAIClient {
     maxTokens: 2000,
   };
 
+  constructor() {}
+
   /**
    * 初始化 OpenAI 客户端
    */

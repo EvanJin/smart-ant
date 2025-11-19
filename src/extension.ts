@@ -26,9 +26,9 @@ export function activate(context: vscode.ExtensionContext) {
   // 添加命令：构建代码索引
   const codeIndexingCommand =
     container.get<CodeIndexingCommand>(CodeIndexingCommand);
+
   const codeIndexingDisposable = codeIndexingCommand.execute();
-  console.log("codeIndexingDisposable", codeIndexingDisposable);
-  context.subscriptions.push(codeIndexingDisposable!);
+  context.subscriptions.push(codeIndexingDisposable);
 
   // 添加命令：搜索代码
   const searchCodeCommand = container.get<SearchCommand>(SearchCommand);

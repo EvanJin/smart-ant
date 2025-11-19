@@ -38,9 +38,9 @@ export class QdrantCoreClient {
    */
   private repo: string | undefined;
 
-  @inject(ConfigContainer) private readonly configContainer!: ConfigContainer;
-
-  constructor() {
+  constructor(
+    @inject(ConfigContainer) private readonly configContainer: ConfigContainer
+  ) {
     this.client = new QdrantClient({
       url: this.configContainer.config.qdrantUrl,
       apiKey: this.configContainer.config.qdrantApiKey,
