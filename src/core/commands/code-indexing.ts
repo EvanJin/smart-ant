@@ -114,9 +114,8 @@ export class CodeIndexingCommand extends BaseCommand {
             progress.report({ message: "正在更新向量数据..." });
             console.log("\n=== 插入向量数据库 ===");
 
-            const insertResult = await this.qdrantClient.batchInsertChunks(
-              allChunks
-            );
+            const insertResult =
+              await this.qdrantClient.batchInsertChunks(allChunks);
 
             console.log("\n=== 插入结果 ===");
             console.log(`成功: ${insertResult.success} 个`);

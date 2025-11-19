@@ -7,6 +7,7 @@
 Smart Ant 是一个 VSCode 插件，基于 OpenAI 的 text-embedding-3-small 模型和 Qdrant 向量数据库, 提供基于 Merkle 树的代码索引功能。它可以将代码库智能分割成可管理的代码块（chunks），并通过 Merkle 树进行组织和验证，为代码搜索、分析和 AI 辅助编程提供基础设施。
 
 ## 核心功能
+
 - **代码分块**：自动将代码文件分割成合适大小的代码块
 - **Merkle 树**：使用哈希树结构组织和验证代码完整性
 - **向量数据库**：使用 Qdrant 存储代码块的向量数据
@@ -18,17 +19,20 @@ Smart Ant 是一个 VSCode 插件，基于 OpenAI 的 text-embedding-3-small 模
 ### 安装
 
 1. 克隆仓库：
+
 ```bash
 git clone https://github.com/EvanJin/smart-ant.git
 cd smart-ant
 ```
 
 2. 安装依赖：
+
 ```bash
 pnpm install
 ```
 
 3. 启动调试：
+
 - 按 `F5` 启动插件开发模式
 
 ### 使用
@@ -52,9 +56,9 @@ const workspace = new Workspace(projectPath, true);
 
 // 构建代码索引
 const stats = workspace.buildCodeIndex({
-  maxChunkSize: 4096,  // 最大块大小
-  minChunkSize: 512,   // 最小块大小
-  overlapLines: 2,     // 重叠行数
+  maxChunkSize: 4096, // 最大块大小
+  minChunkSize: 512, // 最小块大小
+  overlapLines: 2, // 重叠行数
 });
 
 // 搜索代码块
@@ -90,6 +94,7 @@ const isValid = workspace.verifyCodeIndex();
 ## 支持的语言
 
 支持 60+ 种编程语言，包括：
+
 - JavaScript/TypeScript
 - Python
 - Java/Kotlin
@@ -186,6 +191,48 @@ pnpm run vsce:package
 - **crypto** - SHA256 哈希计算
 - **ignore** - gitignore 规则解析
 
+## 插件使用方式
+
+1. 打开用户配置（`Cmd+,` / `Ctrl+,`），添加以下配置：
+
+```json
+{
+  "smart-ant.openaiApiKey": "OpenAI API Key",
+  "smart-ant.openaiBaseURL": "OpenAI API 的 Base URL",
+  "smart-ant.openaiModel": "OpenAI 的 Model, 默认是 text-embedding-3-small 的向量模型",
+  "smart-ant.qdrantUrl": "Cloud Qdrant 的 URL",
+  "smart-ant.qdrantApiKey": "Cloud Qdrant API Key"
+}
+```
+
+2. 打开命令面板（`Cmd+Shift+P` / `Ctrl+Shift+P`）
+3. 输入 "Smart Ant: 代码索引"
+4. 输入 "Smart Ant: 搜索代码"
+
+## 文档
+
+### 核心文档
+
+- [架构设计](./docs/ARCHITECTURE.md) - 项目整体架构和设计模式
+- [配置指南](./docs/CONFIGURATION.md) - OpenAI 和 Qdrant 配置说明
+- [依赖注入](./docs/DEPENDENCY_INJECTION.md) - InversifyJS 使用指南
+
+### API 文档
+
+- [Workspace API](./docs/WORKSPACE_API.md) - 工作区管理 API
+- [Merkle 树](./docs/MERKLE_TREE.md) - Merkle 树实现详解
+- [Qdrant 集成](./docs/QDRANT_INTEGRATION.md) - 向量数据库集成
+- [代码搜索](./docs/CODE_SEARCH.md) - 代码搜索功能
+
+### 优化文档
+
+- [批量嵌入](./docs/BATCH_EMBEDDING.md) - 批量处理优化
+- [Makefile 使用](./docs/MAKEFILE.md) - 构建脚本使用
+
+### 其他文档
+
+- [实现总结](./docs/IMPLEMENTATION_SUMMARY.md) - 功能实现总结
+
 ## 许可证
 
 MIT License
@@ -193,6 +240,22 @@ MIT License
 ## 贡献
 
 欢迎提交 Issue 和 Pull Request！
+
+### 开发指南
+
+1. Fork 本仓库
+2. 创建特性分支 (`git checkout -b feature/AmazingFeature`)
+3. 提交更改 (`git commit -m 'Add some AmazingFeature'`)
+4. 推送到分支 (`git push origin feature/AmazingFeature`)
+5. 开启 Pull Request
+
+### 代码规范
+
+- 使用 TypeScript
+- 遵循 ESLint 规则
+- 使用 Prettier 格式化代码
+- 编写清晰的注释
+- 添加单元测试
 
 ## 作者
 

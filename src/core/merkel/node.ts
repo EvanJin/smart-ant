@@ -194,8 +194,8 @@ export class MerkleNode {
       this.type === "chunk"
         ? `[CHUNK] ${this.chunk?.id} (${this.chunk?.size}B)`
         : this.type === "file"
-        ? `[FILE] ${this.path}`
-        : `[ROOT] ${this.hash.substring(0, 8)}...`;
+          ? `[FILE] ${this.path}`
+          : `[ROOT] ${this.hash.substring(0, 8)}...`;
 
     console.log(indent + prefix + nodeInfo);
 
