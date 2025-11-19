@@ -1,4 +1,4 @@
-.PHONY: help install build watch package clean test lint
+.PHONY: help install build watch package clean test lint format
 
 # 默认目标
 help:
@@ -12,6 +12,7 @@ help:
 	@echo "  make clean      - 清理构建产物"
 	@echo "  make test       - 运行测试"
 	@echo "  make lint       - 运行代码检查"
+	@echo "  make format     - 格式化代码"
 	@echo "  make all        - 完整构建流程（安装 + 编译 + 打包）"
 
 # 安装依赖
@@ -59,6 +60,16 @@ lint:
 check-types:
 	@echo "正在进行类型检查..."
 	pnpm run check-types
+
+# 格式化代码
+format:
+	@echo "正在格式化代码..."
+	pnpm run format
+
+# 检查代码格式
+format-check:
+	@echo "正在检查代码格式..."
+	pnpm run format:check
 
 # 完整构建流程
 all: clean install build package
