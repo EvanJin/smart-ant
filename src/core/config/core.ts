@@ -7,20 +7,13 @@ export class ConfigContainer {
   config: SmartAntConfig;
 
   constructor() {
+    const configure = vscode.workspace.getConfiguration("smart-ant");
     this.config = {
-      openaiApiKey:
-        vscode.workspace.getConfiguration("smart-ant").get("openaiApiKey") ||
-        "",
-      openaiBaseURL:
-        vscode.workspace.getConfiguration("smart-ant").get("openaiBaseURL") ||
-        "",
-      openaiModel:
-        vscode.workspace.getConfiguration("smart-ant").get("openaiModel") || "",
-      qdrantUrl:
-        vscode.workspace.getConfiguration("smart-ant").get("qdrantUrl") || "",
-      qdrantApiKey:
-        vscode.workspace.getConfiguration("smart-ant").get("qdrantApiKey") ||
-        "",
+      openaiApiKey: configure.get("openaiApiKey") || "",
+      openaiBaseURL: configure.get("openaiBaseURL") || "",
+      openaiModel: configure.get("openaiModel") || "",
+      qdrantUrl: configure.get("qdrantUrl") || "",
+      qdrantApiKey: configure.get("qdrantApiKey") || "",
     };
   }
 }
