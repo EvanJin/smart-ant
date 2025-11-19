@@ -70,8 +70,8 @@ export class CodeIndexingCommand extends BaseCommand {
             console.log(allChunks);
 
             // 批量创建文本嵌入
-            progress.report({ message: "正在批量生成文本嵌入..." });
-            console.log("\n=== 批量生成文本嵌入 ===");
+            progress.report({ message: "正在批量生成文本向量..." });
+            console.log("\n=== 批量生成文本向量 ===");
 
             try {
               // 提取所有 chunk 的内容
