@@ -1,29 +1,13 @@
+import { injectable } from "inversify";
 import OpenAI from "openai";
 import * as vscode from "vscode";
-
-/**
- * OpenAI 配置接口
- */
-export interface OpenAIConfig {
-  apiKey?: string;
-  baseURL?: string;
-  model?: string;
-  temperature?: number;
-  maxTokens?: number;
-}
-
-/**
- * 聊天消息接口
- */
-export interface ChatMessage {
-  role: "system" | "user" | "assistant";
-  content: string;
-}
+import { OpenAIConfig } from "./types";
 
 /**
  * OpenAI 客户端类
  */
-class OpenAIClient {
+@injectable()
+export class OpenAIClient {
   private client: OpenAI | null = null;
 
   private config: OpenAIConfig = {
@@ -168,6 +152,3 @@ class OpenAIClient {
     return results;
   }
 }
-
-// 导出单例
-export default new OpenAIClient();

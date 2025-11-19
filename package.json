@@ -56,12 +56,15 @@
           "maximum": 2,
           "description": "OpenAI Temperature (0-2)"
         },
-        "smart-ant.openaiMaxTokens": {
-          "type": "number",
-          "default": 2000,
-          "minimum": 1,
-          "maximum": 4096,
-          "description": "OpenAI Max Tokens"
+        "smart-ant.qdrantUrl": {
+          "type": "string",
+          "default": "***REMOVED***",
+          "description": "Cloud Qdrant URL"
+        },
+        "smart-ant.qdrantApiKey": {
+          "type": "string",
+          "default": "***REMOVED***",
+          "description": "Cloud Qdrant API Key"
         }
       }
     }
@@ -102,7 +105,9 @@
   "dependencies": {
     "@qdrant/js-client-rest": "^1.15.1",
     "ignore": "^7.0.5",
+    "inversify": "^7.10.4",
     "lodash": "^4.17.21",
-    "openai": "^6.9.0"
+    "openai": "^6.9.0",
+    "reflect-metadata": "^0.2.2"
   }
 }

@@ -1,17 +1,26 @@
 import * as vscode from "vscode";
 import { Workspace } from "@/core/workspace";
 import { OpenAIClient } from "@/core/openai";
-import { QdrantClient } from "@/core/qdrant";
+import { QdrantCoreClient } from "@/core/qdrant";
 import { BaseCommand } from "./base";
+import { inject, injectable } from "inversify";
 
+@injectable()
 export class CodeIndexingCommand extends BaseCommand {
   command = "smart-ant.codeIndexing";
 
-  constructor(workspace: Workspace) {
-    super(workspace);
+  @inject(Workspace) private readonly workspace!: Workspace;
+
+  @inject(QdrantCoreClient) private readonly qdrantClient!: QdrantCoreClient;
+
+  @inject(OpenAIClient) private readonly openaiClient!: OpenAIClient;
+
+  constructor() {
+    super();
   }
 
   execute() {
+    console.log("execute code indexing command", this.workspace);
     if (!this.workspace) {
       vscode.window.showErrorMessage("未检测到工作区");
       return null;
@@ -23,7 +32,7 @@ export class CodeIndexingCommand extends BaseCommand {
       console.log(`Git 仓库信息获取成功: ${repo}`);
 
       // 设置集合名称
-      QdrantClient.setCollectionName(repo);
+      this.qdrantClient.setCollectionName(repo);
 
       try {
         // 显示进度提示
@@ -71,7 +80,7 @@ export class CodeIndexingCommand extends BaseCommand {
               const contents = allChunks.map((chunk) => chunk.content);
 
               // 批量生成 embeddings（每批 100 个）
-              const embeddings = await OpenAIClient.createEmbeddings(
+              const embeddings = await this.openaiClient.createEmbeddings(
                 contents,
                 100
               );
@@ -102,7 +111,7 @@ export class CodeIndexingCommand extends BaseCommand {
             progress.report({ message: "正在插入向量数据库..." });
             console.log("\n=== 插入向量数据库 ===");
 
-            const insertResult = await QdrantClient.batchInsertChunks(
+            const insertResult = await this.qdrantClient.batchInsertChunks(
               allChunks
             );
 

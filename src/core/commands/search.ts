@@ -1,14 +1,22 @@
 import * as vscode from "vscode";
 import { Workspace } from "@/core/workspace";
-import { QdrantClient } from "@/core/qdrant";
+import { QdrantCoreClient } from "@/core/qdrant";
 import { OpenAIClient } from "@/core/openai";
 import { BaseCommand } from "./base";
+import { inject, injectable } from "inversify";
 
+@injectable()
 export class SearchCommand extends BaseCommand {
   command = "smart-ant.searchCode";
 
-  constructor(workspace: Workspace) {
-    super(workspace);
+  @inject(Workspace) private readonly workspace!: Workspace;
+
+  @inject(QdrantCoreClient) private readonly qdrantClient!: QdrantCoreClient;
+
+  @inject(OpenAIClient) private readonly openaiClient!: OpenAIClient;
+
+  constructor() {
+    super();
   }
 
   execute() {
@@ -21,7 +29,7 @@ export class SearchCommand extends BaseCommand {
       try {
         // 1. 设置 Qdrant 集合名称
         const repo = await this.workspace.getRepoHash();
-        QdrantClient.setCollectionName(repo);
+        this.qdrantClient.setCollectionName(repo);
 
         // 1. 获取用户输入的搜索查询
         const query = await vscode.window.showInputBox({
@@ -44,11 +52,11 @@ export class SearchCommand extends BaseCommand {
             progress.report({ message: "正在搜索代码..." });
 
             // 3. 使用 Qdrant 搜索
-            const results = await QdrantClient.searchByText(
+            const results = await this.qdrantClient.searchByText(
               query,
               10,
               async (text) => {
-                return await OpenAIClient.createEmbedding(text);
+                return await this.openaiClient.createEmbedding(text);
               }
             );
 

@@ -1,1 +1,2 @@
-export { default as QdrantClient } from "./core";
+export { QdrantCoreClient } from "./core";
+export type { QdrantConfig, BatchInsertResult } from "./types";

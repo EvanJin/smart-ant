@@ -1,1 +1,2 @@
-export { default as Workspace } from "./core";
+export { Workspace } from "./core";
+export type { FileInfo } from "./types";

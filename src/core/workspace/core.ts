@@ -1,6 +1,5 @@
 import * as vscode from "vscode";
 import fs from "fs";
-import crypto from "crypto";
 import path from "path";
 import ignore from "ignore";
 import { CODE_EXTENSIONS, DEFAULT_IGNORE_FILES } from "@/config/code";
@@ -8,14 +7,27 @@ import { FileInfo } from "@/core/workspace/types";
 import Merkle from "@/core/merkel/core";
 import { ChunkConfig } from "@/types/global";
 import { CodeChunk, MerkleTreeStats } from "@/core/merkel/types";
+import { injectable } from "inversify";
 
-class Workspace {
+@injectable()
+export class Workspace {
   private path: string;
   private ig: ReturnType<typeof ignore> | null = null;
   private codeOnly: boolean = false;
   private merkle: Merkle | null = null;
 
   constructor(path: string, codeOnly: boolean = false) {
+    this.path = path;
+    this.codeOnly = codeOnly;
+    this.loadGitignore();
+  }
+
+  /**
+   * 初始化工作区
+   * @param path 工作区路径
+   * @param codeOnly 是否只遍历代码文件
+   */
+  initialize(path: string, codeOnly: boolean = false) {
     this.path = path;
     this.codeOnly = codeOnly;
     this.loadGitignore();
@@ -290,5 +302,3 @@ class Workspace {
     return this.merkle.getStats();
   }
 }
-
-export default Workspace;

@@ -1,10 +1,13 @@
 import { QdrantClient } from "@qdrant/js-client-rest";
 import { CodeChunk } from "@/core/merkel/types";
 import crypto from "crypto";
-import { QdrantConfig, BatchInsertResult } from "./types";
 import { camelCase } from "lodash";
+import { inject, injectable } from "inversify";
+import { ConfigContainer } from "@/core/config";
+import { BatchInsertResult } from "./types";
 
-class QdrantCoreClient {
+@injectable()
+export class QdrantCoreClient {
   /**
    * Qdrant 客户端
    */
@@ -35,27 +38,13 @@ class QdrantCoreClient {
    */
   private repo: string | undefined;
 
-  constructor(config?: QdrantConfig) {
+  @inject(ConfigContainer) private readonly configContainer!: ConfigContainer;
+
+  constructor() {
     this.client = new QdrantClient({
-      url:
-        config?.url ||
-        "***REMOVED***",
-      apiKey:
-        config?.apiKey ||
-        "***REMOVED***",
+      url: this.configContainer.config.qdrantUrl,
+      apiKey: this.configContainer.config.qdrantApiKey,
     });
-
-    if (config?.vectorSize) {
-      this.vectorSize = config.vectorSize;
-    }
-
-    if (config?.batchSize) {
-      this.batchSize = config.batchSize;
-    }
-
-    if (config?.repo) {
-      this.collectionName = config.repo;
-    }
   }
 
   /**
@@ -448,5 +437,3 @@ class QdrantCoreClient {
     }
   }
 }
-
-export default new QdrantCoreClient();
