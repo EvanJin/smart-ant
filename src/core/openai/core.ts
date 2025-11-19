@@ -98,7 +98,13 @@ export class OpenAIClient {
    */
   public async createEmbeddings(
     texts: string[],
-    batchSize: number = 100
+    batchSize: number = 100,
+    onProgress?: (
+      batchIndex: number,
+      totalBatches: number,
+      current: number,
+      total: number
+    ) => void
   ): Promise<number[][]> {
     this.ensureInitialized();
 
@@ -108,7 +114,6 @@ export class OpenAIClient {
     console.log(
       `开始批量生成 embedding，共 ${texts.length} 个文本，分 ${totalBatches} 批处理`
     );
-
     for (let i = 0; i < texts.length; i += batchSize) {
       const batch = texts.slice(i, i + batchSize);
       const batchIndex = Math.floor(i / batchSize) + 1;
@@ -133,6 +138,7 @@ export class OpenAIClient {
         console.log(
           `第 ${batchIndex}/${totalBatches} 批处理完成，已生成 ${results.length}/${texts.length} 个 embedding`
         );
+        onProgress?.(batchIndex, totalBatches, results.length, texts.length);
       } catch (error) {
         console.error(`第 ${batchIndex} 批处理失败:`, error);
         // 如果批量失败，尝试逐个处理该批次

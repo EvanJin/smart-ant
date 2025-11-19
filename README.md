@@ -1,10 +1,10 @@
 # Smart Ant
 
-智能代码索引 VSCode 插件 - 基于 Merkle 树的代码分块和索引系统
+代码索引 VSCode 插件 - 基于 Merkle 树的代码分块和索引系统
 
 ## 简介
 
-Smart Ant 是一个强大的 VSCode 插件，提供基于 Merkle 树的代码索引功能。它可以将代码库智能分割成可管理的代码块（chunks），并通过 Merkle 树进行组织和验证，为代码搜索、分析和 AI 辅助编程提供基础设施。
+Smart Ant 是一个 VSCode 插件，提供基于 Merkle 树的代码索引功能。它可以将代码库智能分割成可管理的代码块（chunks），并通过 Merkle 树进行组织和验证，为代码搜索、分析和 AI 辅助编程提供基础设施。
 
 ## 核心功能
 

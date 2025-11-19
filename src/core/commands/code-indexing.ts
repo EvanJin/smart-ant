@@ -80,7 +80,12 @@ export class CodeIndexingCommand extends BaseCommand {
               // 批量生成 embeddings（每批 100 个）
               const embeddings = await this.openaiClient.createEmbeddings(
                 contents,
-                100
+                100,
+                (batchIndex, totalBatches, current, total) => {
+                  progress.report({
+                    message: `第 ${batchIndex}/${totalBatches} 批处理完成，已生成 ${current}/${total} 个 embedding`,
+                  });
+                }
               );
 
               // 将 embeddings 分配给对应的 chunks
@@ -106,7 +111,7 @@ export class CodeIndexingCommand extends BaseCommand {
             }
 
             // 批量插入到 Qdrant
-            progress.report({ message: "正在插入向量数据库..." });
+            progress.report({ message: "正在更新向量数据..." });
             console.log("\n=== 插入向量数据库 ===");
 
             const insertResult = await this.qdrantClient.batchInsertChunks(

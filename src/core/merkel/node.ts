@@ -1,19 +1,19 @@
 import crypto from "crypto";
-import { CodeChunk, MerkleNodeData } from "@/core/merkel/types";
+import { CodeChunk, MerkleNodeData, MerkleNodeType } from "@/core/merkel/types";
 
 /**
  * MerkleNode 类 - 表示 Merkle 树的节点
  */
 export class MerkleNode {
   public hash: string;
-  public type: "file" | "chunk" | "root";
+  public type: MerkleNodeType;
   public path?: string;
   public chunk?: CodeChunk;
   public children: MerkleNode[];
   public parent?: MerkleNode;
 
   constructor(
-    type: "file" | "chunk" | "root",
+    type: MerkleNodeType,
     children: MerkleNode[] = [],
     chunk?: CodeChunk,
     path?: string
