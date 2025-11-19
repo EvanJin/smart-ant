@@ -32,12 +32,12 @@
       "properties": {
         "smart-ant.openaiApiKey": {
           "type": "string",
-          "default": "***REMOVED***",
+          "default": "",
           "description": "OpenAI API Key"
         },
         "smart-ant.openaiBaseURL": {
           "type": "string",
-          "default": "***REMOVED***",
+          "default": "",
           "description": "OpenAI API Base URL"
         },
         "smart-ant.openaiModel": {
@@ -58,12 +58,12 @@
         },
         "smart-ant.qdrantUrl": {
           "type": "string",
-          "default": "***REMOVED***",
+          "default": "",
           "description": "Cloud Qdrant URL"
         },
         "smart-ant.qdrantApiKey": {
           "type": "string",
-          "default": "***REMOVED***",
+          "default": "",
           "description": "Cloud Qdrant API Key"
         }
       }
