@@ -198,12 +198,6 @@ pnpm run vsce:package
 - **crypto** - SHA256 哈希计算
 - **ignore** - gitignore 规则解析
 
-## 性能
-
-- **构建速度**：约 1000 文件/秒
-- **内存占用**：代码库大小的 2-3 倍
-- **验证速度**：< 100ms（中小型项目）
-
 ## 许可证
 
 MIT License
