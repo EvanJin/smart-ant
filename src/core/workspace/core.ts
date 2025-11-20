@@ -244,55 +244,6 @@ export class Workspace {
   }
 
   /**
-   * 构建代码索引（Merkle 树）
-   *
-   * 该方法会：
-   * 1. 获取工作区中的所有代码文件
-   * 2. 使用指定的分块配置创建 Merkle 树
-   * 3. 将代码文件分割成代码块并构建树结构
-   * 4. 返回构建统计信息
-   *
-   * @param chunkConfig - 可选的代码分块配置，包括：
-   *   - chunkSize: 每个代码块的最大行数（默认 50）
-   *   - overlapLines: 代码块之间的重叠行数（默认 5）
-   * @returns MerkleTreeStats - 包含以下统计信息：
-   *   - totalFiles: 处理的文件总数
-   *   - totalChunks: 生成的代码块总数
-   *   - treeDepth: Merkle 树的深度
-   *   - rootHash: 根节点的哈希值
-   * @throws 如果文件读取或处理过程中发生错误
-   *
-   * @example
-   * ```typescript
-   * // 使用默认配置构建索引
-   * const stats = workspace.buildCodeIndex();
-   *
-   * // 使用自定义配置构建索引
-   * const stats = workspace.buildCodeIndex({
-   *   chunkSize: 100,
-   *   overlapLines: 10
-   * });
-   * ```
-   */
-  public buildCodeIndex(chunkConfig?: Partial<ChunkConfig>): MerkleTreeStats {
-    console.log("\n=== 开始构建代码索引 ===\n");
-
-    // 获取所有代码文件
-    const codeFiles = this.getCodeFiles();
-    console.log(`找到 ${codeFiles.length} 个代码文件`);
-
-    // 创建 Merkle 树
-    this.merkle = new Merkle(this.path, chunkConfig);
-
-    // 构建树
-    const stats = this.merkle.build(codeFiles);
-
-    console.log("\n=== 代码索引构建完成 ===\n");
-
-    return stats;
-  }
-
-  /**
    * 获取 Merkle 树实例
    */
   public getMerkle(): Merkle | null {
@@ -368,8 +319,7 @@ export class Workspace {
     const startTime = process.hrtime.bigint();
 
     // 获取当前所有文件
-    const files = this.getAllFiles();
-    const codeFiles = files.filter((file: FileInfo) => !file.isDirectory);
+    const codeFiles = this.getCodeFiles();
 
     // 检测文件变更
     let changes: FileChange[] = [];

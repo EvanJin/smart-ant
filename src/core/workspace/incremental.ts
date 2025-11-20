@@ -83,12 +83,6 @@ export class IncrementalUpdateManager {
    */
   private loadState(): void {
     try {
-      if (!this.context) {
-        console.warn("VSCode 上下文未初始化");
-        this.currentState = null;
-        return;
-      }
-
       const stateFilePath = this.getStateFilePath();
 
       if (!fs.existsSync(stateFilePath)) {
@@ -116,11 +110,6 @@ export class IncrementalUpdateManager {
    */
   saveState(state: IndexState): void {
     try {
-      if (!this.context) {
-        console.warn("VSCode 上下文未初始化，无法保存状态");
-        return;
-      }
-
       const stateFilePath = this.getStateFilePath();
       const fileContent = JSON.stringify(state, null, 2);
 

@@ -18,7 +18,7 @@ import { ChunkConfig } from "@/types/global";
  * - 验证树的完整性
  * - 提供搜索和统计功能
  */
-class Merkle {
+export default class Merkle {
   /** 代码库根路径 */
   private rootPath: string;
 
@@ -348,7 +348,7 @@ class Merkle {
     // 收集所有文件的哈希
     const fileHashes: string[] = [];
 
-    for (const [relativePath, chunks] of this.chunks.entries()) {
+    for (const [_, chunks] of this.chunks.entries()) {
       // 计算文件的哈希（所有 chunk 哈希的组合）
       const chunkHashes = chunks.map((c) => c.hash).join("");
       const fileHash = crypto
@@ -380,5 +380,3 @@ class Merkle {
     console.log(`重新计算根哈希: ${rootHash.substring(0, 16)}...`);
   }
 }
-
-export default Merkle;

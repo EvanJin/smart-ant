@@ -5,6 +5,7 @@ import { QdrantCoreClient } from "@/core/qdrant";
 import { BaseCommand } from "./base";
 import { inject, injectable } from "inversify";
 import { FileChange } from "@/core/workspace/types";
+import { DEFAULT_CHUNK_CONFIG } from "@/config/chunk";
 
 /**
  * 代码索引命令类
@@ -259,11 +260,7 @@ export class CodeIndexingCommand extends BaseCommand {
             // 增量构建代码索引
             const { stats, changes, isIncremental } =
               this.workspace.buildCodeIndexIncremental(
-                {
-                  maxChunkSize: 4096,
-                  minChunkSize: 512,
-                  overlapLines: 2,
-                },
+                DEFAULT_CHUNK_CONFIG,
                 forceFullRebuild
               );
 

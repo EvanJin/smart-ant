@@ -40,7 +40,30 @@ export class CodeChunker {
   }
 
   /**
-   * 将文件分割成 chunks
+   * 将文件分割成代码块
+   *
+   * 该方法将文件内容按照配置的大小和重叠策略分割成多个代码块。
+   * 分块策略：
+   * 1. 按行读取文件内容
+   * 2. 累积行直到达到 maxChunkSize
+   * 3. 创建代码块时保留 overlapLines 行作为重叠
+   * 4. 确保每个块至少达到 minChunkSize（除了最后一块）
+   * 5. 如果最后有剩余的小块，合并到最后一个代码块中
+   *
+   * @param filePath - 文件的绝对路径
+   * @param relativePath - 文件的相对路径（相对于工作区根目录）
+   * @param content - 可选的文件内容，如果不提供则从文件系统读取
+   * @returns 代码块数组，每个块包含内容、位置、哈希等信息
+   *
+   * @example
+   * ```typescript
+   * const chunker = new CodeChunker();
+   * const chunks = chunker.chunkFile(
+   *   '/path/to/file.ts',
+   *   'src/file.ts',
+   *   'file content...'
+   * );
+   * ```
    */
   public chunkFile(
     filePath: string,
