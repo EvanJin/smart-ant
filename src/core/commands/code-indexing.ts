@@ -4,7 +4,6 @@ import { OpenAIClient } from "@/core/openai";
 import { QdrantCoreClient } from "@/core/qdrant";
 import { BaseCommand } from "./base";
 import { inject, injectable } from "inversify";
-import { MerkleTreeStats } from "@/core/merkel/types";
 import { FileChange } from "@/core/workspace/types";
 
 /**
@@ -298,9 +297,8 @@ export class CodeIndexingCommand extends BaseCommand {
             console.log("代码索引统计信息:", stats);
             if (stats) {
               const mode = forceFullRebuild ? "全量构建" : "增量更新";
-              vscode.window.showInformationMessage(
-                `代码索引构建完成！（${mode}）共 ${stats.totalFiles} 个文件，${stats.totalChunks} 个代码块`
-              );
+              const message = `代码索引构建完成！（${mode}）共 ${forceFullRebuild ? stats.totalFiles : changes.length} 个文件，${stats.totalChunks} 个代码块`;
+              vscode.window.showInformationMessage(message);
             }
           }
         );
