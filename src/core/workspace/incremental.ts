@@ -1,4 +1,5 @@
 import fs from "fs";
+import path from "path";
 import crypto from "crypto";
 import * as vscode from "vscode";
 import { FileInfo, FileChange, FileChangeType, IndexState } from "./types";
@@ -8,21 +9,21 @@ import { injectable } from "inversify";
  * 增量更新管理器
  *
  * 负责检测文件变更、管理索引状态、执行增量更新
- * 使用 VSCode 的 workspaceState 存储索引状态
+ * 使用本地文件系统存储索引状态（存储在 VSCode 的 globalStorage 目录）
  */
 @injectable()
 export class IncrementalUpdateManager {
   /** VSCode 扩展上下文 */
   private context: vscode.ExtensionContext | null = null;
 
-  /** 工作区路径（用作 state key 的一部分） */
+  /** 工作区路径 */
   private workspacePath: string = "";
 
   /** 当前索引状态 */
   private currentState: IndexState | null = null;
 
-  /** 状态存储的 key 前缀 */
-  private readonly STATE_KEY_PREFIX = "smart-ant.indexState";
+  /** 状态文件名 */
+  private readonly STATE_FILE_NAME = "cache-index-state.json";
 
   /**
    * 初始化增量更新管理器
@@ -32,20 +33,49 @@ export class IncrementalUpdateManager {
   initialize(context: vscode.ExtensionContext, workspacePath: string): void {
     this.context = context;
     this.workspacePath = workspacePath;
+    this.ensureStorageDirectory();
     this.loadState();
   }
 
   /**
-   * 获取状态存储的 key
+   * 确保存储目录存在
    */
-  private getStateKey(): string {
-    // 使用工作区路径的哈希作为 key 的一部分，确保不同工作区的状态独立
+  private ensureStorageDirectory(): void {
+    if (!this.context) {
+      return;
+    }
+
+    const storageDir = this.getStorageDirectory();
+    if (!fs.existsSync(storageDir)) {
+      fs.mkdirSync(storageDir, { recursive: true });
+      console.log(`创建存储目录: ${storageDir}`);
+    }
+  }
+
+  /**
+   * 获取存储目录路径
+   * 使用 VSCode 的 globalStorageUri 作为基础路径
+   */
+  private getStorageDirectory(): string {
+    if (!this.context) {
+      throw new Error("VSCode 上下文未初始化");
+    }
+    return this.context.globalStorageUri.fsPath;
+  }
+
+  /**
+   * 获取状态文件的完整路径
+   */
+  private getStateFilePath(): string {
+    // 使用工作区路径的哈希作为文件名的一部分，确保不同工作区的状态独立
     const pathHash = crypto
       .createHash("md5")
       .update(this.workspacePath)
       .digest("hex")
       .substring(0, 8);
-    return `${this.STATE_KEY_PREFIX}.${pathHash}`;
+
+    const fileName = `${pathHash}-${this.STATE_FILE_NAME}`;
+    return path.join(this.getStorageDirectory(), fileName);
   }
 
   /**
@@ -59,18 +89,21 @@ export class IncrementalUpdateManager {
         return;
       }
 
-      const stateKey = this.getStateKey();
-      const savedState = this.context.workspaceState.get<IndexState>(stateKey);
+      const stateFilePath = this.getStateFilePath();
 
-      if (savedState) {
-        this.currentState = savedState;
-        console.log(
-          `加载索引状态: ${this.currentState.totalFiles} 个文件 (key: ${stateKey})`
-        );
-      } else {
-        console.log("未找到索引状态，将进行全量索引");
+      if (!fs.existsSync(stateFilePath)) {
+        console.log("未找到索引状态文件，将进行全量索引");
         this.currentState = null;
+        return;
       }
+
+      const fileContent = fs.readFileSync(stateFilePath, "utf-8");
+      const savedState = JSON.parse(fileContent) as IndexState;
+
+      this.currentState = savedState;
+      console.log(
+        `加载索引状态: ${this.currentState.totalFiles} 个文件 (文件: ${stateFilePath})`
+      );
     } catch (error) {
       console.error("加载索引状态失败:", error);
       this.currentState = null;
@@ -88,12 +121,14 @@ export class IncrementalUpdateManager {
         return;
       }
 
-      const stateKey = this.getStateKey();
-      await this.context.workspaceState.update(stateKey, state);
+      const stateFilePath = this.getStateFilePath();
+      const fileContent = JSON.stringify(state, null, 2);
+
+      fs.writeFileSync(stateFilePath, fileContent, "utf-8");
 
       this.currentState = state;
       console.log(
-        `保存索引状态: ${state.totalFiles} 个文件 (key: ${stateKey})`
+        `保存索引状态: ${state.totalFiles} 个文件 (文件: ${stateFilePath})`
       );
     } catch (error) {
       console.error("保存索引状态失败:", error);
@@ -219,10 +254,16 @@ export class IncrementalUpdateManager {
         return;
       }
 
-      const stateKey = this.getStateKey();
-      await this.context.workspaceState.update(stateKey, undefined);
+      const stateFilePath = this.getStateFilePath();
+
+      if (fs.existsSync(stateFilePath)) {
+        fs.unlinkSync(stateFilePath);
+        console.log(`索引状态已清除 (文件: ${stateFilePath})`);
+      } else {
+        console.log("索引状态文件不存在，无需清除");
+      }
+
       this.currentState = null;
-      console.log(`索引状态已清除 (key: ${stateKey})`);
     } catch (error) {
       console.error("清除索引状态失败:", error);
     }
