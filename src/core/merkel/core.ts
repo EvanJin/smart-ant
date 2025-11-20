@@ -284,6 +284,101 @@ class Merkle {
   public getChunker(): CodeChunker {
     return this.chunker;
   }
+
+  /**
+   * 更新单个文件
+   *
+   * 重新处理指定文件，更新其代码块
+   *
+   * @param file 文件信息
+   */
+  public updateFile(file: FileInfo): void {
+    try {
+      // 读取文件内容
+      const content = fs.readFileSync(file.filePath, "utf-8");
+
+      // 分块
+      const fileChunks = this.chunker.chunkFile(
+        file.filePath,
+        file.relativePath,
+        content
+      );
+
+      if (fileChunks.length === 0) {
+        console.warn(`文件分块为空: ${file.relativePath}`);
+        return;
+      }
+
+      // 更新 chunks 映射
+      this.chunks.set(file.relativePath, fileChunks);
+
+      console.log(
+        `更新文件: ${file.relativePath}, ${fileChunks.length} 个 chunks`
+      );
+    } catch (error) {
+      console.error(`更新文件失败: ${file.relativePath}`, error);
+    }
+  }
+
+  /**
+   * 删除文件的所有 chunks
+   *
+   * @param relativePath 文件相对路径
+   */
+  public removeFile(relativePath: string): void {
+    if (this.chunks.has(relativePath)) {
+      const removedChunks = this.chunks.get(relativePath);
+      this.chunks.delete(relativePath);
+      console.log(
+        `删除文件: ${relativePath}, ${removedChunks?.length || 0} 个 chunks`
+      );
+    } else {
+      console.warn(`文件不存在: ${relativePath}`);
+    }
+  }
+
+  /**
+   * 重新计算根哈希
+   *
+   * 在增量更新后重新计算整个树的根哈希
+   */
+  public recalculateRootHash(): void {
+    const crypto = require("crypto");
+
+    // 收集所有文件的哈希
+    const fileHashes: string[] = [];
+
+    for (const [relativePath, chunks] of this.chunks.entries()) {
+      // 计算文件的哈希（所有 chunk 哈希的组合）
+      const chunkHashes = chunks.map((c) => c.hash).join("");
+      const fileHash = crypto
+        .createHash("sha256")
+        .update(chunkHashes)
+        .digest("hex");
+      fileHashes.push(fileHash);
+    }
+
+    // 计算新的根哈希
+    const rootHash = crypto
+      .createHash("sha256")
+      .update(fileHashes.sort().join(""))
+      .digest("hex");
+
+    // 更新统计信息
+    if (this.buildStats) {
+      this.buildStats.rootHash = rootHash;
+      this.buildStats.totalFiles = this.chunks.size;
+      this.buildStats.totalChunks = Array.from(this.chunks.values()).reduce(
+        (sum, chunks) => sum + chunks.length,
+        0
+      );
+      this.buildStats.totalSize = Array.from(this.chunks.values())
+        .flat()
+        .reduce((sum, chunk) => sum + chunk.size, 0);
+    }
+
+    console.log(`重新计算根哈希: ${rootHash.substring(0, 16)}...`);
+  }
 }
 
 export default Merkle;

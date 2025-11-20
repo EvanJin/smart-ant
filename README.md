@@ -226,6 +226,7 @@ pnpm run vsce:package
 
 ### 优化文档
 
+- [增量更新](./docs/INCREMENTAL_UPDATE.md) - 增量索引更新功能
 - [批量嵌入](./docs/BATCH_EMBEDDING.md) - 批量处理优化
 - [Makefile 使用](./docs/MAKEFILE.md) - 构建脚本使用
 

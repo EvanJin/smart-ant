@@ -1,13 +1,20 @@
 import * as vscode from "vscode";
 import fs from "fs";
 import path from "path";
+import crypto from "crypto";
 import ignore from "ignore";
 import { CODE_EXTENSIONS, DEFAULT_IGNORE_FILES } from "@/config/code";
-import { FileInfo } from "@/core/workspace/types";
+import {
+  FileInfo,
+  FileChange,
+  FileChangeType,
+  IndexState,
+} from "@/core/workspace/types";
 import Merkle from "@/core/merkel/core";
 import { ChunkConfig } from "@/types/global";
 import { CodeChunk, MerkleTreeStats } from "@/core/merkel/types";
-import { injectable } from "inversify";
+import { inject, injectable } from "inversify";
+import { IncrementalUpdateManager } from "./incremental";
 
 @injectable()
 export class Workspace {
@@ -19,6 +26,16 @@ export class Workspace {
 
   private merkle: Merkle | null = null;
 
+  /** 增量更新管理器 */
+  private incrementalManager: IncrementalUpdateManager;
+
+  constructor(
+    @inject(IncrementalUpdateManager)
+    incrementalManager: IncrementalUpdateManager
+  ) {
+    this.incrementalManager = incrementalManager;
+  }
+
   /**
    * 初始化工作区
    * @param path 工作区路径
@@ -28,6 +45,9 @@ export class Workspace {
     this.path = path;
     this.codeOnly = codeOnly;
     this.loadGitignore();
+
+    // 初始化增量更新管理器
+    this.incrementalManager.initialize(path);
   }
 
   getWorkspaceName() {
@@ -220,6 +240,34 @@ export class Workspace {
 
   /**
    * 构建代码索引（Merkle 树）
+   *
+   * 该方法会：
+   * 1. 获取工作区中的所有代码文件
+   * 2. 使用指定的分块配置创建 Merkle 树
+   * 3. 将代码文件分割成代码块并构建树结构
+   * 4. 返回构建统计信息
+   *
+   * @param chunkConfig - 可选的代码分块配置，包括：
+   *   - chunkSize: 每个代码块的最大行数（默认 50）
+   *   - overlapLines: 代码块之间的重叠行数（默认 5）
+   * @returns MerkleTreeStats - 包含以下统计信息：
+   *   - totalFiles: 处理的文件总数
+   *   - totalChunks: 生成的代码块总数
+   *   - treeDepth: Merkle 树的深度
+   *   - rootHash: 根节点的哈希值
+   * @throws 如果文件读取或处理过程中发生错误
+   *
+   * @example
+   * ```typescript
+   * // 使用默认配置构建索引
+   * const stats = workspace.buildCodeIndex();
+   *
+   * // 使用自定义配置构建索引
+   * const stats = workspace.buildCodeIndex({
+   *   chunkSize: 100,
+   *   overlapLines: 10
+   * });
+   * ```
    */
   public buildCodeIndex(chunkConfig?: Partial<ChunkConfig>): MerkleTreeStats {
     console.log("\n=== 开始构建代码索引 ===\n");
@@ -297,5 +345,167 @@ export class Workspace {
       return null;
     }
     return this.merkle.getStats();
+  }
+
+  /**
+   * 增量构建代码索引
+   * @param config 分块配置
+   * @param forceFullRebuild 是否强制全量重建
+   * @returns Merkle 树统计信息和变更信息
+   */
+  buildCodeIndexIncremental(
+    config?: ChunkConfig,
+    forceFullRebuild: boolean = false
+  ): {
+    stats: MerkleTreeStats;
+    changes: FileChange[];
+    isIncremental: boolean;
+  } {
+    console.log(
+      `开始${forceFullRebuild ? "全量" : "增量"}构建代码索引，工作区: ${this.path}`
+    );
+    const startTime = process.hrtime.bigint();
+
+    // 获取当前所有文件
+    const files = this.traverseFiles(this.path);
+    const codeFiles = files.filter((file) => !file.isDirectory);
+
+    // 检测文件变更
+    let changes: FileChange[] = [];
+    let isIncremental = false;
+
+    if (!forceFullRebuild && this.incrementalManager.hasState()) {
+      changes = this.incrementalManager.detectChanges(codeFiles);
+      isIncremental = changes.length > 0 && changes.length < codeFiles.length;
+
+      // 如果变更太多（超过50%），执行全量重建
+      if (changes.length > codeFiles.length * 0.5) {
+        console.log(
+          `变更文件过多 (${changes.length}/${codeFiles.length})，执行全量重建`
+        );
+        isIncremental = false;
+      }
+    }
+
+    let stats: MerkleTreeStats;
+
+    if (isIncremental && changes.length > 0) {
+      // 增量更新
+      stats = this.performIncrementalUpdate(changes, codeFiles, config);
+    } else {
+      // 全量构建
+      stats = this.performFullBuild(codeFiles, config);
+      changes = codeFiles.map((file) => ({
+        filePath: file.filePath,
+        relativePath: file.relativePath,
+        changeType: FileChangeType.ADDED,
+      }));
+    }
+
+    const endTime = process.hrtime.bigint();
+    stats.buildTime = Number(endTime - startTime) / 1_000_000;
+
+    // 保存索引状态
+    this.saveIndexState(codeFiles, stats);
+
+    console.log(`代码索引构建完成，耗时: ${stats.buildTime}ms`);
+    console.log(`模式: ${isIncremental ? "增量更新" : "全量构建"}`);
+
+    return { stats, changes, isIncremental };
+  }
+
+  /**
+   * 执行全量构建
+   */
+  private performFullBuild(
+    files: FileInfo[],
+    config?: ChunkConfig
+  ): MerkleTreeStats {
+    console.log(`执行全量构建: ${files.length} 个文件`);
+    this.merkle = new Merkle(this.path, files, config);
+    return this.merkle.buildTree();
+  }
+
+  /**
+   * 执行增量更新
+   */
+  private performIncrementalUpdate(
+    changes: FileChange[],
+    allFiles: FileInfo[],
+    config?: ChunkConfig
+  ): MerkleTreeStats {
+    console.log(`执行增量更新: ${changes.length} 个变更`);
+
+    // 如果 Merkle 树不存在，执行全量构建
+    if (!this.merkle) {
+      return this.performFullBuild(allFiles, config);
+    }
+
+    // 处理每个变更
+    for (const change of changes) {
+      switch (change.changeType) {
+        case FileChangeType.ADDED:
+        case FileChangeType.MODIFIED:
+          // 重新处理文件
+          const file = allFiles.find(
+            (f) => f.relativePath === change.relativePath
+          );
+          if (file) {
+            this.merkle.updateFile(file);
+          }
+          break;
+
+        case FileChangeType.DELETED:
+          // 删除文件的所有 chunks
+          this.merkle.removeFile(change.relativePath);
+          break;
+      }
+    }
+
+    // 重新计算根哈希
+    this.merkle.recalculateRootHash();
+
+    return this.merkle.getStats()!;
+  }
+
+  /**
+   * 保存索引状态
+   */
+  private saveIndexState(files: FileInfo[], stats: MerkleTreeStats): void {
+    const fileHashes: Record<string, string> = {};
+
+    for (const file of files) {
+      try {
+        const content = fs.readFileSync(file.filePath, "utf-8");
+        const hash = crypto.createHash("sha256").update(content).digest("hex");
+        fileHashes[file.relativePath] = hash;
+      } catch (error) {
+        console.error(`计算文件哈希失败: ${file.relativePath}`, error);
+      }
+    }
+
+    const state: IndexState = {
+      rootHash: stats.rootHash,
+      fileHashes,
+      lastUpdated: Date.now(),
+      totalFiles: stats.totalFiles,
+      totalChunks: stats.totalChunks,
+    };
+
+    this.incrementalManager.saveState(state);
+  }
+
+  /**
+   * 清除索引状态（强制下次全量更新）
+   */
+  clearIndexState(): void {
+    this.incrementalManager.clearState();
+  }
+
+  /**
+   * 获取路径
+   */
+  getPath(): string {
+    return this.path;
   }
 }

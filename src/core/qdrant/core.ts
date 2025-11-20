@@ -1,5 +1,6 @@
 import { QdrantClient } from "@qdrant/js-client-rest";
 import { CodeChunk } from "@/core/merkel/types";
+import { FileChange, FileChangeType } from "@/core/workspace/types";
 import crypto from "crypto";
 import { camelCase } from "lodash";
 import { inject, injectable } from "inversify";
@@ -435,5 +436,125 @@ export class QdrantCoreClient {
       console.error("清空集合失败:", error);
       throw error;
     }
+  }
+
+  /**
+   * 删除指定文件的所有代码块
+   * @param relativePath 文件相对路径
+   * @returns 删除的数量
+   */
+  public async deleteChunksByFile(relativePath: string): Promise<number> {
+    if (!this.isInitialized) {
+      await this.initialize();
+    }
+
+    try {
+      console.log(`删除文件的代码块: ${relativePath}`);
+
+      // 使用 filter 删除匹配的点
+      const result = await this.client.delete(this.collectionName, {
+        filter: {
+          must: [
+            {
+              key: "relativePath",
+              match: {
+                value: relativePath,
+              },
+            },
+          ],
+        },
+        wait: true,
+      });
+
+      console.log(`删除完成: ${relativePath}`);
+      return result.status === "completed" ? 1 : 0;
+    } catch (error) {
+      console.error(`删除文件代码块失败: ${relativePath}`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * 增量更新代码块
+   * @param changes 文件变更列表
+   * @param getChunksByFile 获取文件代码块的函数
+   * @returns 更新结果
+   */
+  public async incrementalUpdate(
+    changes: FileChange[],
+    getChunksByFile: (relativePath: string) => CodeChunk[] | undefined
+  ): Promise<{
+    deleted: number;
+    inserted: number;
+    errors: Array<{ file: string; error: string }>;
+  }> {
+    if (!this.isInitialized) {
+      await this.initialize();
+    }
+
+    const result = {
+      deleted: 0,
+      inserted: 0,
+      errors: [] as Array<{ file: string; error: string }>,
+    };
+
+    for (const change of changes) {
+      try {
+        switch (change.changeType) {
+          case FileChangeType.DELETED:
+            // 删除文件的所有 chunks
+            const deleteCount = await this.deleteChunksByFile(
+              change.relativePath
+            );
+            result.deleted += deleteCount;
+            break;
+
+          case FileChangeType.MODIFIED:
+            // 先删除旧的 chunks
+            await this.deleteChunksByFile(change.relativePath);
+            result.deleted++;
+
+            // 然后插入新的 chunks
+            const modifiedChunks = getChunksByFile(change.relativePath);
+            if (modifiedChunks && modifiedChunks.length > 0) {
+              const insertResult = await this.batchInsertChunks(modifiedChunks);
+              result.inserted += insertResult.success;
+              result.errors.push(
+                ...insertResult.errors.map((e) => ({
+                  file: change.relativePath,
+                  error: e.error,
+                }))
+              );
+            }
+            break;
+
+          case FileChangeType.ADDED:
+            // 插入新文件的 chunks
+            const addedChunks = getChunksByFile(change.relativePath);
+            if (addedChunks && addedChunks.length > 0) {
+              const insertResult = await this.batchInsertChunks(addedChunks);
+              result.inserted += insertResult.success;
+              result.errors.push(
+                ...insertResult.errors.map((e) => ({
+                  file: change.relativePath,
+                  error: e.error,
+                }))
+              );
+            }
+            break;
+        }
+      } catch (error) {
+        result.errors.push({
+          file: change.relativePath,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+    }
+
+    console.log(
+      `增量更新完成: 删除 ${result.deleted} 个文件, 插入 ${result.inserted} 个 chunks`
+    );
+
+    return result;
   }
 }

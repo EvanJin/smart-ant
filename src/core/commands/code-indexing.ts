@@ -1,5 +1,5 @@
 import * as vscode from "vscode";
-import { Workspace } from "@/core/workspace";
+import { Workspace, FileChangeType } from "@/core/workspace";
 import { OpenAIClient } from "@/core/openai";
 import { QdrantCoreClient } from "@/core/qdrant";
 import { BaseCommand } from "./base";
@@ -25,6 +25,33 @@ export class CodeIndexingCommand extends BaseCommand {
         return;
       }
 
+      // 询问用户是否强制全量更新
+      const modeSelection = await vscode.window.showQuickPick(
+        [
+          {
+            label: "增量更新",
+            value: false,
+            description: "只处理变更的文件（推荐）",
+            detail: "检测文件变更，只重新索引修改、新增或删除的文件",
+          },
+          {
+            label: "全量重建",
+            value: true,
+            description: "重新索引所有文件",
+            detail: "清除现有索引，重新处理所有文件",
+          },
+        ],
+        {
+          placeHolder: "选择索引模式",
+        }
+      );
+
+      if (modeSelection === undefined) {
+        return;
+      }
+
+      const forceFullRebuild = modeSelection.value;
+
       const repo = await this.workspace.getRepoHash();
 
       console.log(`Git 仓库信息获取成功: ${repo}`);
@@ -43,15 +70,21 @@ export class CodeIndexingCommand extends BaseCommand {
           async (progress) => {
             progress.report({ message: "正在构建代码索引..." });
 
-            // 构建代码索引
-            const stats = this.workspace.buildCodeIndex({
-              maxChunkSize: 4096,
-              minChunkSize: 512,
-              overlapLines: 2,
-            });
+            // 增量构建代码索引
+            const { stats, changes, isIncremental } =
+              this.workspace.buildCodeIndexIncremental(
+                {
+                  maxChunkSize: 4096,
+                  minChunkSize: 512,
+                  overlapLines: 2,
+                },
+                forceFullRebuild
+              );
 
             // 显示统计信息
             console.log("\n=== 代码索引统计 ===");
+            console.log(`模式: ${isIncremental ? "增量更新" : "全量构建"}`);
+            console.log(`变更文件数: ${changes.length}`);
             console.log(`总文件数: ${stats.totalFiles}`);
             console.log(`总 chunk 数: ${stats.totalChunks}`);
             console.log(`总大小: ${(stats.totalSize / 1024).toFixed(2)} KB`);
@@ -62,74 +95,133 @@ export class CodeIndexingCommand extends BaseCommand {
             const isValid = this.workspace.verifyCodeIndex();
             console.log(`索引验证: ${isValid ? "✓ 通过" : "✗ 失败"}`);
 
-            // 获取所有 chunks
-            const allChunks = this.workspace.getAllCodeChunks();
-            console.log(
-              `\n总共生成的 chunks 数: ${allChunks.length}, 以及 chunks 详情\n`
-            );
-            console.log(allChunks);
+            // 处理向量数据库更新
+            if (isIncremental && changes.length > 0) {
+              // 增量更新向量数据库
+              progress.report({ message: "正在增量更新向量数据..." });
 
-            // 批量创建文本嵌入
-            progress.report({ message: "正在批量生成文本向量..." });
-            console.log("\n=== 批量生成文本向量 ===");
+              // 只为变更的文件生成嵌入
+              const changedChunks = changes
+                .filter((c) => c.changeType !== FileChangeType.DELETED)
+                .flatMap(
+                  (c) =>
+                    this.workspace.getCodeChunksByFile(c.relativePath) || []
+                );
 
-            try {
-              // 提取所有 chunk 的内容
-              const contents = allChunks.map((chunk) => chunk.content);
+              if (changedChunks.length > 0) {
+                progress.report({ message: "正在生成文本向量..." });
+                console.log(
+                  `\n=== 为 ${changedChunks.length} 个变更的 chunks 生成向量 ===`
+                );
 
-              // 批量生成 embeddings（每批 100 个）
-              const embeddings = await this.openaiClient.createEmbeddings(
-                contents,
-                100,
-                (batchIndex, totalBatches, current, total) => {
-                  progress.report({
-                    message: `第 ${batchIndex}/${totalBatches} 批处理完成，已生成 ${current}/${total} 个 embedding`,
-                  });
-                }
-              );
+                const contents = changedChunks.map((chunk) => chunk.content);
+                const embeddings = await this.openaiClient.createEmbeddings(
+                  contents,
+                  100,
+                  (batchIndex, totalBatches, current, total) => {
+                    progress.report({
+                      message: `生成向量 ${current}/${total}`,
+                    });
+                  }
+                );
 
-              // 将 embeddings 分配给对应的 chunks
-              let successCount = 0;
-              let failCount = 0;
-
-              for (let i = 0; i < allChunks.length; i++) {
-                if (embeddings[i] && embeddings[i].length > 0) {
-                  allChunks[i].embedding = embeddings[i];
-                  successCount++;
-                } else {
-                  console.error(`Chunk ${allChunks[i].id} 的 embedding 为空`);
-                  failCount++;
+                // 分配 embeddings
+                for (let i = 0; i < changedChunks.length; i++) {
+                  if (embeddings[i] && embeddings[i].length > 0) {
+                    changedChunks[i].embedding = embeddings[i];
+                  }
                 }
               }
 
-              console.log(
-                `\n批量 embedding 生成完成: 成功 ${successCount} 个，失败 ${failCount} 个`
+              // 增量更新 Qdrant
+              progress.report({ message: "正在更新向量数据库..." });
+              console.log("\n=== 增量更新向量数据库 ===");
+
+              const updateResult = await this.qdrantClient.incrementalUpdate(
+                changes,
+                (relativePath) =>
+                  this.workspace.getCodeChunksByFile(relativePath)
               );
-            } catch (error) {
-              console.error("批量生成 embedding 失败:", error);
-              throw error;
-            }
 
-            // 批量插入到 Qdrant
-            progress.report({ message: "正在更新向量数据..." });
-            console.log("\n=== 插入向量数据库 ===");
+              console.log("\n=== 向量数据库更新结果 ===");
+              console.log(`删除: ${updateResult.deleted} 个文件`);
+              console.log(`插入: ${updateResult.inserted} 个 chunks`);
+              console.log(`错误: ${updateResult.errors.length} 个`);
 
-            const insertResult =
-              await this.qdrantClient.batchInsertChunks(allChunks);
+              if (updateResult.errors.length > 0) {
+                console.log("\n错误详情:");
+                updateResult.errors.slice(0, 10).forEach((err) => {
+                  console.log(`  ${err.file}: ${err.error}`);
+                });
+                if (updateResult.errors.length > 10) {
+                  console.log(
+                    `  ... 还有 ${updateResult.errors.length - 10} 个错误`
+                  );
+                }
+              }
+            } else {
+              // 全量更新（原有逻辑）
+              const allChunks = this.workspace.getAllCodeChunks();
+              console.log(
+                `\n总共生成的 chunks 数: ${allChunks.length}, 以及 chunks 详情\n`
+              );
 
-            console.log("\n=== 插入结果 ===");
-            console.log(`成功: ${insertResult.success} 个`);
-            console.log(`失败: ${insertResult.failed} 个`);
+              progress.report({ message: "正在生成文本向量..." });
+              console.log("\n=== 批量生成文本向量 ===");
 
-            if (insertResult.errors.length > 0) {
-              console.log("\n错误详情:");
-              insertResult.errors.slice(0, 10).forEach((err) => {
-                console.log(`  ${err.chunkId}: ${err.error}`);
-              });
-              if (insertResult.errors.length > 10) {
-                console.log(
-                  `  ... 还有 ${insertResult.errors.length - 10} 个错误`
+              try {
+                const contents = allChunks.map((chunk) => chunk.content);
+                const embeddings = await this.openaiClient.createEmbeddings(
+                  contents,
+                  100,
+                  (batchIndex, totalBatches, current, total) => {
+                    progress.report({
+                      message: `第 ${batchIndex}/${totalBatches} 批处理完成，已生成 ${current}/${total} 个 embedding`,
+                    });
+                  }
                 );
+
+                let successCount = 0;
+                let failCount = 0;
+
+                for (let i = 0; i < allChunks.length; i++) {
+                  if (embeddings[i] && embeddings[i].length > 0) {
+                    allChunks[i].embedding = embeddings[i];
+                    successCount++;
+                  } else {
+                    console.error(`Chunk ${allChunks[i].id} 的 embedding 为空`);
+                    failCount++;
+                  }
+                }
+
+                console.log(
+                  `\n批量 embedding 生成完成: 成功 ${successCount} 个，失败 ${failCount} 个`
+                );
+              } catch (error) {
+                console.error("批量生成 embedding 失败:", error);
+                throw error;
+              }
+
+              progress.report({ message: "正在更新向量数据..." });
+              console.log("\n=== 插入向量数据库 ===");
+
+              const insertResult =
+                await this.qdrantClient.batchInsertChunks(allChunks);
+
+              console.log("\n=== 插入结果 ===");
+              console.log(`成功: ${insertResult.success} 个`);
+              console.log(`失败: ${insertResult.failed} 个`);
+
+              if (insertResult.errors.length > 0) {
+                console.log("\n错误详情:");
+                insertResult.errors.slice(0, 10).forEach((err) => {
+                  console.log(`  ${err.chunkId}: ${err.error}`);
+                });
+                if (insertResult.errors.length > 10) {
+                  console.log(
+                    `  ... 还有 ${insertResult.errors.length - 10} 个错误`
+                  );
+                }
               }
             }
 
@@ -142,8 +234,9 @@ export class CodeIndexingCommand extends BaseCommand {
         // 显示成功消息
         const stats = this.workspace.getCodeIndexStats();
         if (stats) {
+          const mode = forceFullRebuild ? "全量构建" : "增量更新";
           vscode.window.showInformationMessage(
-            `代码索引构建完成！共 ${stats.totalFiles} 个文件，${stats.totalChunks} 个代码块`
+            `代码索引构建完成！（${mode}）共 ${stats.totalFiles} 个文件，${stats.totalChunks} 个代码块`
           );
         }
       } catch (error) {

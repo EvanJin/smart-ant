@@ -2,7 +2,7 @@ import { Container } from "inversify";
 import { ConfigContainer } from "@/core/config";
 import { OpenAIClient } from "@/core/openai";
 import { QdrantCoreClient } from "@/core/qdrant";
-import { Workspace } from "@/core/workspace";
+import { Workspace, IncrementalUpdateManager } from "@/core/workspace";
 import { CodeIndexingCommand } from "@/core/commands/code-indexing";
 import { SearchCommand } from "@/core/commands/search";
 
@@ -12,6 +12,7 @@ const container = new Container({
 
 // 绑定核心组件
 container.bind(ConfigContainer).toSelf();
+container.bind(IncrementalUpdateManager).toSelf();
 container.bind(Workspace).toSelf();
 
 container.bind(OpenAIClient).toSelf();
