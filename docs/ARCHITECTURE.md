@@ -171,11 +171,13 @@ Commands (命令层)
 ### 1. 配置管理 (ConfigContainer)
 
 **职责**:
+
 - 从 VSCode 设置读取配置
 - 提供统一的配置访问接口
 - 管理敏感信息（API Key）
 
 **关键方法**:
+
 ```typescript
 class ConfigContainer {
   public config: SmartAntConfig;
@@ -188,6 +190,7 @@ class ConfigContainer {
 ### 2. 工作区管理 (Workspace)
 
 **职责**:
+
 - 文件系统遍历
 - `.gitignore` 解析
 - 代码文件过滤
@@ -196,30 +199,34 @@ class ConfigContainer {
 - Git 仓库信息获取
 
 **关键方法**:
+
 ```typescript
 class Workspace {
-  initialize(path: string, codeOnly: boolean): void
-  buildCodeIndex(config?: ChunkConfig): MerkleTreeStats
-  verifyCodeIndex(): boolean
-  getAllCodeChunks(): CodeChunk[]
-  getRepoHash(): Promise<string>
+  initialize(path: string, codeOnly: boolean): void;
+  buildCodeIndex(config?: ChunkConfig): MerkleTreeStats;
+  verifyCodeIndex(): boolean;
+  getAllCodeChunks(): CodeChunk[];
+  getRepoHash(): Promise<string>;
 }
 ```
 
 ### 3. Merkle 树 (Merkle)
 
 **职责**:
+
 - 代码分块（CodeChunker）
 - 哈希计算
 - 树结构构建
 - 完整性验证
 
 **组件**:
+
 - `CodeChunker`: 将代码文件分割成块
 - `MerkleNode`: Merkle 树节点
 - `Merkle`: Merkle 树核心逻辑
 
 **关键特性**:
+
 - SHA256 哈希
 - 可配置的块大小
 - 行重叠支持
@@ -228,25 +235,28 @@ class Workspace {
 ### 4. OpenAI 集成 (OpenAIClient)
 
 **职责**:
+
 - 文本嵌入生成
 - 批量处理
 - 进度回调
 - 错误处理
 
 **关键方法**:
+
 ```typescript
 class OpenAIClient {
-  initialize(config?: OpenAIConfig): OpenAIClient
-  createEmbedding(text: string): Promise<number[]>
+  initialize(config?: OpenAIConfig): OpenAIClient;
+  createEmbedding(text: string): Promise<number[]>;
   createEmbeddings(
     texts: string[],
     batchSize: number,
     onProgress?: ProgressCallback
-  ): Promise<number[][]>
+  ): Promise<number[][]>;
 }
 ```
 
 **特性**:
+
 - 懒加载初始化
 - 批量处理（默认 100 个/批）
 - 进度回调支持
@@ -255,24 +265,27 @@ class OpenAIClient {
 ### 5. Qdrant 集成 (QdrantCoreClient)
 
 **职责**:
+
 - 向量数据库连接
 - 集合管理
 - 批量插入
 - 向量搜索
 
 **关键方法**:
+
 ```typescript
 class QdrantCoreClient {
-  initialize(): Promise<void>
-  setCollectionName(name: string): void
-  batchInsertChunks(chunks: CodeChunk[]): Promise<BatchInsertResult>
-  searchByText(query: string, limit: number): Promise<SearchResult[]>
-  searchSimilar(embedding: number[], limit: number): Promise<CodeChunk[]>
-  hybridSearch(query: string, filters: Filters): Promise<SearchResult[]>
+  initialize(): Promise<void>;
+  setCollectionName(name: string): void;
+  batchInsertChunks(chunks: CodeChunk[]): Promise<BatchInsertResult>;
+  searchByText(query: string, limit: number): Promise<SearchResult[]>;
+  searchSimilar(embedding: number[], limit: number): Promise<CodeChunk[]>;
+  hybridSearch(query: string, filters: Filters): Promise<SearchResult[]>;
 }
 ```
 
 **特性**:
+
 - 动态集合命名（基于仓库哈希）
 - 批量插入（默认 100 个/批）
 - 多种搜索模式（文本、向量、混合）
@@ -281,16 +294,19 @@ class QdrantCoreClient {
 ### 6. 命令层 (Commands)
 
 **职责**:
+
 - VSCode 命令注册
 - 用户交互
 - 进度显示
 - 错误处理
 
 **命令**:
+
 - `CodeIndexingCommand`: 构建代码索引
 - `SearchCommand`: 搜索代码
 
 **基类**:
+
 ```typescript
 abstract class BaseCommand {
   abstract command: string;
@@ -361,6 +377,7 @@ abstract class BaseCommand {
 ### 1. 依赖注入 (Dependency Injection)
 
 使用 InversifyJS 实现：
+
 - **优势**: 松耦合、可测试、易维护
 - **应用**: 所有核心服务都通过 DI 容器管理
 - **生命周期**: 默认单例模式
@@ -368,6 +385,7 @@ abstract class BaseCommand {
 ### 2. 两阶段初始化 (Two-Phase Initialization)
 
 用于需要参数的服务：
+
 ```typescript
 // 阶段 1: 构造（由 DI 容器）
 const workspace = container.get(Workspace);
@@ -379,6 +397,7 @@ workspace.initialize(path, codeOnly);
 ### 3. 懒加载 (Lazy Loading)
 
 用于重量级资源：
+
 ```typescript
 private ensureClient(): void {
   if (!this.client) {
@@ -390,6 +409,7 @@ private ensureClient(): void {
 ### 4. 命令模式 (Command Pattern)
 
 所有 VSCode 命令都继承自 `BaseCommand`：
+
 ```typescript
 abstract class BaseCommand {
   abstract command: string;
@@ -400,6 +420,7 @@ abstract class BaseCommand {
 ### 5. 策略模式 (Strategy Pattern)
 
 代码分块策略可配置：
+
 ```typescript
 interface ChunkConfig {
   maxChunkSize?: number;
@@ -413,11 +434,13 @@ interface ChunkConfig {
 ### 1. 批量处理
 
 **OpenAI 嵌入生成**:
+
 - 批量大小: 100 个文本/批
 - 并发控制: 顺序处理批次
 - 错误处理: 批次失败时降级为单个处理
 
 **Qdrant 插入**:
+
 - 批量大小: 100 个点/批
 - 使用 `upsert` 支持更新
 - 等待确认: `wait: true`
@@ -568,4 +591,3 @@ make release
 - **v0.0.2**: 引入依赖注入
 - **v0.0.3**: 批量处理优化
 - **v0.0.4**: 添加代码格式化
-
