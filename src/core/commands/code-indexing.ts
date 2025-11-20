@@ -293,17 +293,17 @@ export class CodeIndexingCommand extends BaseCommand {
               await this.doFullBuild(progress);
             }
             progress.report({ message: "代码索引构建完成！" });
+
+            // 显示成功消息
+            console.log("代码索引统计信息:", stats);
+            if (stats) {
+              const mode = forceFullRebuild ? "全量构建" : "增量更新";
+              vscode.window.showInformationMessage(
+                `代码索引构建完成！（${mode}）共 ${stats.totalFiles} 个文件，${stats.totalChunks} 个代码块`
+              );
+            }
           }
         );
-
-        // 显示成功消息
-        const stats = this.workspace.getCodeIndexStats();
-        if (stats) {
-          const mode = forceFullRebuild ? "全量构建" : "增量更新";
-          vscode.window.showInformationMessage(
-            `代码索引构建完成！（${mode}）共 ${stats.totalFiles} 个文件，${stats.totalChunks} 个代码块`
-          );
-        }
       } catch (error) {
         console.error("构建代码索引失败:", error);
         vscode.window.showErrorMessage(
