@@ -1,6 +1,6 @@
 import fs from "fs";
-import path from "path";
 import crypto from "crypto";
+import * as vscode from "vscode";
 import { FileInfo, FileChange, FileChangeType, IndexState } from "./types";
 import { injectable } from "inversify";
 
@@ -8,26 +8,44 @@ import { injectable } from "inversify";
  * 增量更新管理器
  *
  * 负责检测文件变更、管理索引状态、执行增量更新
+ * 使用 VSCode 的 workspaceState 存储索引状态
  */
 @injectable()
 export class IncrementalUpdateManager {
-  /** 索引状态缓存文件路径 */
-  private stateFilePath: string = "";
+  /** VSCode 扩展上下文 */
+  private context: vscode.ExtensionContext | null = null;
+
+  /** 工作区路径（用作 state key 的一部分） */
+  private workspacePath: string = "";
 
   /** 当前索引状态 */
   private currentState: IndexState | null = null;
 
+  /** 状态存储的 key 前缀 */
+  private readonly STATE_KEY_PREFIX = "smart-ant.indexState";
+
   /**
    * 初始化增量更新管理器
+   * @param context VSCode 扩展上下文
    * @param workspacePath 工作区路径
    */
-  initialize(workspacePath: string): void {
-    this.stateFilePath = path.join(
-      workspacePath,
-      ".smart-ant",
-      "index-state.json"
-    );
+  initialize(context: vscode.ExtensionContext, workspacePath: string): void {
+    this.context = context;
+    this.workspacePath = workspacePath;
     this.loadState();
+  }
+
+  /**
+   * 获取状态存储的 key
+   */
+  private getStateKey(): string {
+    // 使用工作区路径的哈希作为 key 的一部分，确保不同工作区的状态独立
+    const pathHash = crypto
+      .createHash("md5")
+      .update(this.workspacePath)
+      .digest("hex")
+      .substring(0, 8);
+    return `${this.STATE_KEY_PREFIX}.${pathHash}`;
   }
 
   /**
@@ -35,15 +53,22 @@ export class IncrementalUpdateManager {
    */
   private loadState(): void {
     try {
-      if (fs.existsSync(this.stateFilePath)) {
-        const data = fs.readFileSync(this.stateFilePath, "utf-8");
-        this.currentState = JSON.parse(data);
+      if (!this.context) {
+        console.warn("VSCode 上下文未初始化");
+        this.currentState = null;
+        return;
+      }
 
+      const stateKey = this.getStateKey();
+      const savedState = this.context.workspaceState.get<IndexState>(stateKey);
+
+      if (savedState) {
+        this.currentState = savedState;
         console.log(
-          `加载索引状态: ${this.currentState?.totalFiles || 0} 个文件`
+          `加载索引状态: ${this.currentState.totalFiles} 个文件 (key: ${stateKey})`
         );
       } else {
-        console.log("未找到索引状态文件，将进行全量索引");
+        console.log("未找到索引状态，将进行全量索引");
         this.currentState = null;
       }
     } catch (error) {
@@ -56,22 +81,20 @@ export class IncrementalUpdateManager {
    * 保存索引状态
    * @param state 索引状态
    */
-  saveState(state: IndexState): void {
+  async saveState(state: IndexState): Promise<void> {
     try {
-      // 确保目录存在
-      const dir = path.dirname(this.stateFilePath);
-      if (!fs.existsSync(dir)) {
-        fs.mkdirSync(dir, { recursive: true });
+      if (!this.context) {
+        console.warn("VSCode 上下文未初始化，无法保存状态");
+        return;
       }
 
-      fs.writeFileSync(
-        this.stateFilePath,
-        JSON.stringify(state, null, 2),
-        "utf-8"
-      );
+      const stateKey = this.getStateKey();
+      await this.context.workspaceState.update(stateKey, state);
 
       this.currentState = state;
-      console.log(`保存索引状态: ${state.totalFiles} 个文件`);
+      console.log(
+        `保存索引状态: ${state.totalFiles} 个文件 (key: ${stateKey})`
+      );
     } catch (error) {
       console.error("保存索引状态失败:", error);
     }
@@ -189,13 +212,17 @@ export class IncrementalUpdateManager {
   /**
    * 清除索引状态（用于强制全量更新）
    */
-  clearState(): void {
+  async clearState(): Promise<void> {
     try {
-      if (fs.existsSync(this.stateFilePath)) {
-        fs.unlinkSync(this.stateFilePath);
-        console.log("索引状态已清除");
+      if (!this.context) {
+        console.warn("VSCode 上下文未初始化");
+        return;
       }
+
+      const stateKey = this.getStateKey();
+      await this.context.workspaceState.update(stateKey, undefined);
       this.currentState = null;
+      console.log(`索引状态已清除 (key: ${stateKey})`);
     } catch (error) {
       console.error("清除索引状态失败:", error);
     }

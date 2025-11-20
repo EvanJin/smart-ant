@@ -5,6 +5,3 @@ node_modules
 .vscode-test/
 *.vsix
 .DS_Store
-
-# Smart Ant 索引状态
-.smart-ant/

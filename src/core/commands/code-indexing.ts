@@ -72,7 +72,7 @@ export class CodeIndexingCommand extends BaseCommand {
 
             // 增量构建代码索引
             const { stats, changes, isIncremental } =
-              this.workspace.buildCodeIndexIncremental(
+              await this.workspace.buildCodeIndexIncremental(
                 {
                   maxChunkSize: 4096,
                   minChunkSize: 512,
@@ -120,7 +120,7 @@ export class CodeIndexingCommand extends BaseCommand {
                   100,
                   (batchIndex, totalBatches, current, total) => {
                     progress.report({
-                      message: `生成向量 ${current}/${total}`,
+                      message: `第 ${batchIndex}/${totalBatches} 批处理完成，已生成 ${current}/${total} 个 embedding`,
                     });
                   }
                 );

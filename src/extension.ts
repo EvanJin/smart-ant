@@ -21,7 +21,9 @@ export function activate(context: vscode.ExtensionContext) {
   }
 
   // 默认只遍历代码文件
-  container.get(Workspace).initialize(workspaceFolders[0].uri.fsPath, true);
+  container
+    .get(Workspace)
+    .initialize(context, workspaceFolders[0].uri.fsPath, true);
 
   // 添加命令：构建代码索引
   const codeIndexingCommand =

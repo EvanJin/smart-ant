@@ -149,16 +149,27 @@ const result = workspace.buildCodeIndexIncremental({}, true);
 workspace.clearIndexState();
 ```
 
-## 索引状态文件
+## 索引状态存储
 
-### 位置
+### 存储方式
 
+索引状态使用 **VSCode 的 `workspaceState` API** 存储，而不是文件系统。这样做的好处：
+
+- ✅ 更符合 VSCode 扩展最佳实践
+- ✅ 自动管理存储位置和生命周期
+- ✅ 不会在工作区产生额外文件
+- ✅ 支持多工作区独立状态
+
+### 存储 Key
+
+```typescript
+// Key 格式：smart-ant.indexState.{workspacePathHash}
+// 例如：smart-ant.indexState.a1b2c3d4
 ```
-.smart-ant/
-└── index-state.json
-```
 
-### 格式
+每个工作区都有独立的存储 key，通过工作区路径的 MD5 哈希生成。
+
+### 数据格式
 
 ```json
 {
@@ -356,19 +367,16 @@ if (daysSinceLastFullBuild > 7) {
 }
 ```
 
-### 2. 清理状态文件
+### 2. 清理状态数据
 
-如果遇到索引问题，可以清除状态文件重新开始：
-
-```bash
-rm -rf .smart-ant/
-```
-
-或通过代码：
+如果遇到索引问题，可以清除状态数据重新开始：
 
 ```typescript
-workspace.clearIndexState();
+// 通过代码清除
+await workspace.clearIndexState();
 ```
+
+或者重新选择"全量重建"模式。
 
 ### 3. 监控变更比例
 
@@ -381,20 +389,22 @@ if (changes.length > codeFiles.length * 0.5) {
 }
 ```
 
-### 4. 备份状态文件
+### 4. 查看状态数据
 
-对于重要项目，可以备份状态文件：
+状态数据存储在 VSCode 的内部数据库中，可以通过代码访问：
 
-```bash
-cp .smart-ant/index-state.json .smart-ant/index-state.backup.json
+```typescript
+const state = incrementalManager.getCurrentState();
+console.log(state);
 ```
 
 ## 注意事项
 
-### ⚠️ 状态文件位置
+### ⚠️ 状态存储位置
 
-- 状态文件保存在工作区根目录的 `.smart-ant/` 文件夹
-- 该文件夹已添加到 `.gitignore`，不会提交到版本控制
+- 状态保存在 VSCode 的 `workspaceState` 中
+- 不会在工作区产生任何文件
+- 自动随 VSCode 工作区管理
 
 ### ⚠️ 并发安全
 
@@ -406,10 +416,11 @@ cp .smart-ant/index-state.json .smart-ant/index-state.backup.json
 - 大文件的哈希计算可能较慢
 - 可以考虑使用文件修改时间作为快速检查
 
-### ⚠️ 磁盘空间
+### ⚠️ 存储空间
 
-- 状态文件会占用一定磁盘空间
-- 对于大型项目（10000+ 文件），状态文件可能达到几 MB
+- 状态数据存储在 VSCode 的内部数据库中
+- 对于大型项目（10000+ 文件），状态数据可能达到几 MB
+- VSCode 会自动管理存储空间
 
 ### ⚠️ Git 操作
 
@@ -429,14 +440,14 @@ workspace.clearIndexState();
 workspace.buildCodeIndexIncremental({}, true);
 ```
 
-### 问题 2: 状态文件过大
+### 问题 2: 状态数据过大
 
 **原因**: 项目文件过多
 
 **解决方案**:
 ```typescript
 // 只索引代码文件
-workspace.initialize(path, true); // codeOnly = true
+workspace.initialize(context, path, true); // codeOnly = true
 ```
 
 ### 问题 3: 增量更新很慢
@@ -447,9 +458,9 @@ workspace.initialize(path, true); // codeOnly = true
 - 系统会自动降级为全量重建（变更 > 50%）
 - 可以手动选择全量重建
 
-### 问题 4: 找不到状态文件
+### 问题 4: 找不到状态数据
 
-**原因**: 首次运行或状态文件被删除
+**原因**: 首次运行或状态被清除
 
 **解决方案**:
 - 系统会自动执行全量构建

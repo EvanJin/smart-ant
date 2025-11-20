@@ -38,16 +38,21 @@ export class Workspace {
 
   /**
    * 初始化工作区
+   * @param context VSCode 扩展上下文
    * @param path 工作区路径
    * @param codeOnly 是否只遍历代码文件
    */
-  initialize(path: string, codeOnly: boolean = false) {
+  initialize(
+    context: vscode.ExtensionContext,
+    path: string,
+    codeOnly: boolean = false
+  ) {
     this.path = path;
     this.codeOnly = codeOnly;
     this.loadGitignore();
 
     // 初始化增量更新管理器
-    this.incrementalManager.initialize(path);
+    this.incrementalManager.initialize(context, path);
   }
 
   getWorkspaceName() {
@@ -353,14 +358,14 @@ export class Workspace {
    * @param forceFullRebuild 是否强制全量重建
    * @returns Merkle 树统计信息和变更信息
    */
-  buildCodeIndexIncremental(
+  async buildCodeIndexIncremental(
     config?: ChunkConfig,
     forceFullRebuild: boolean = false
-  ): {
+  ): Promise<{
     stats: MerkleTreeStats;
     changes: FileChange[];
     isIncremental: boolean;
-  } {
+  }> {
     console.log(
       `开始${forceFullRebuild ? "全量" : "增量"}构建代码索引，工作区: ${this.path}`
     );
@@ -406,7 +411,7 @@ export class Workspace {
     stats.buildTime = Number(endTime - startTime) / 1_000_000;
 
     // 保存索引状态
-    this.saveIndexState(codeFiles, stats);
+    await this.saveIndexState(codeFiles, stats);
 
     console.log(`代码索引构建完成，耗时: ${stats.buildTime}ms`);
     console.log(`模式: ${isIncremental ? "增量更新" : "全量构建"}`);
@@ -471,7 +476,10 @@ export class Workspace {
   /**
    * 保存索引状态
    */
-  private saveIndexState(files: FileInfo[], stats: MerkleTreeStats): void {
+  private async saveIndexState(
+    files: FileInfo[],
+    stats: MerkleTreeStats
+  ): Promise<void> {
     const fileHashes: Record<string, string> = {};
 
     for (const file of files) {
@@ -492,14 +500,14 @@ export class Workspace {
       totalChunks: stats.totalChunks,
     };
 
-    this.incrementalManager.saveState(state);
+    await this.incrementalManager.saveState(state);
   }
 
   /**
    * 清除索引状态（强制下次全量更新）
    */
-  clearIndexState(): void {
-    this.incrementalManager.clearState();
+  async clearIndexState(): Promise<void> {
+    await this.incrementalManager.clearState();
   }
 
   /**
