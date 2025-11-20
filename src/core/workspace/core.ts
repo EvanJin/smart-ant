@@ -15,6 +15,7 @@ import { ChunkConfig } from "@/types/global";
 import { CodeChunk, MerkleTreeStats } from "@/core/merkel/types";
 import { inject, injectable } from "inversify";
 import { IncrementalUpdateManager } from "./incremental";
+import { MAX_CHANGED_FILES } from "@/config/chunk";
 
 @injectable()
 export class Workspace {
@@ -329,8 +330,8 @@ export class Workspace {
       changes = this.incrementalManager.detectChanges(codeFiles);
       isIncremental = changes.length > 0 && changes.length < codeFiles.length;
 
-      // 如果变更太多（超过50%），执行全量重建
-      if (changes.length > codeFiles.length * 0.5) {
+      // 如果变更太多（超过 MAX_CHANGED_FILES 比例），执行全量重建
+      if (changes.length > codeFiles.length * MAX_CHANGED_FILES) {
         console.log(
           `变更文件过多 (${changes.length}/${codeFiles.length})，执行全量重建`
         );
