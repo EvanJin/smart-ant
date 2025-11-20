@@ -86,6 +86,7 @@ export class QdrantCoreClient {
 
       if (exists) {
         console.log(`集合 ${this.collectionName} 已存在`);
+        await this.ensurePayloadIndex();
         return;
       }
 
@@ -94,13 +95,48 @@ export class QdrantCoreClient {
           size: this.vectorSize,
           distance: "Cosine",
         },
+        // 配置优化器，自动为常用字段创建索引
+        optimizers_config: {
+          indexing_threshold: 10000,
+        },
+        on_disk_payload: false,
       });
 
       console.log(`集合 ${this.collectionName} 创建成功`);
+
+      // 创建索引
+      await this.ensurePayloadIndex();
     } catch (error) {
       console.error("创建集合失败:", error);
       throw error;
     }
+  }
+
+  /**
+   * 确保 payload 索引存在
+   * 为常用的查询字段创建索引以提高查询性能
+   * 包括: id, relative_path, file_path, hash
+   */
+  private async ensurePayloadIndex(): Promise<void> {
+    const keys = ["id", "relative_path", "file_path", "hash"];
+    const promises = [];
+    for (const key of keys) {
+      promises.push(
+        this.client.createPayloadIndex(this.collectionName, {
+          field_name: key,
+          field_schema: "keyword",
+        })
+      );
+    }
+
+    Promise.all(promises)
+      .then((results) => {
+        return results.map((result) => result.status === "acknowledged");
+      })
+      .catch((error) => {
+        console.error("创建 payload 索引失败:", error);
+        throw error;
+      });
   }
 
   /**
@@ -451,23 +487,43 @@ export class QdrantCoreClient {
     try {
       console.log(`删除文件的代码块: ${relativePath}`);
 
-      // 使用 filter 删除匹配的点
-      const result = await this.client.delete(this.collectionName, {
+      // 先查询要删除的点
+      const searchResult = await this.client.scroll(this.collectionName, {
         filter: {
           must: [
             {
-              key: "relativePath",
+              key: "relative_path",
               match: {
                 value: relativePath,
               },
             },
           ],
         },
+        limit: 1000, // 假设单个文件不会超过 1000 个 chunks
+        with_payload: false,
+        with_vector: false,
+      });
+
+      if (searchResult.points.length === 0) {
+        console.log(`没有找到文件的代码块: ${relativePath}`);
+        return 0;
+      }
+
+      // 提取所有点的 ID
+      const pointIds = searchResult.points.map((point) => point.id);
+
+      console.log(
+        `找到 ${pointIds.length} 个代码块，准备删除: ${relativePath}`
+      );
+
+      // 使用点 ID 删除
+      await this.client.delete(this.collectionName, {
+        points: pointIds,
         wait: true,
       });
 
-      console.log(`删除完成: ${relativePath}`);
-      return result.status === "completed" ? 1 : 0;
+      console.log(`删除完成: ${relativePath}, 共 ${pointIds.length} 个代码块`);
+      return pointIds.length;
     } catch (error) {
       console.error(`删除文件代码块失败: ${relativePath}`, error);
       throw error;

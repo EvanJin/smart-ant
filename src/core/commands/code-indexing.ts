@@ -50,6 +50,7 @@ export class CodeIndexingCommand extends BaseCommand {
         return;
       }
 
+      // 是否强制全量重建
       const forceFullRebuild = modeSelection.value;
 
       const repo = await this.workspace.getRepoHash();
