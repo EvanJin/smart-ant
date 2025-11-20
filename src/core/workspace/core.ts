@@ -367,8 +367,8 @@ export class Workspace {
     const startTime = process.hrtime.bigint();
 
     // 获取当前所有文件
-    const files = this.traverseFiles(this.path);
-    const codeFiles = files.filter((file) => !file.isDirectory);
+    const files = this.getAllFiles();
+    const codeFiles = files.filter((file: FileInfo) => !file.isDirectory);
 
     // 检测文件变更
     let changes: FileChange[] = [];
@@ -395,7 +395,7 @@ export class Workspace {
     } else {
       // 全量构建
       stats = this.performFullBuild(codeFiles, config);
-      changes = codeFiles.map((file) => ({
+      changes = codeFiles.map((file: FileInfo) => ({
         filePath: file.filePath,
         relativePath: file.relativePath,
         changeType: FileChangeType.ADDED,
@@ -422,8 +422,8 @@ export class Workspace {
     config?: ChunkConfig
   ): MerkleTreeStats {
     console.log(`执行全量构建: ${files.length} 个文件`);
-    this.merkle = new Merkle(this.path, files, config);
-    return this.merkle.buildTree();
+    this.merkle = new Merkle(this.path, config);
+    return this.merkle.build(files);
   }
 
   /**
