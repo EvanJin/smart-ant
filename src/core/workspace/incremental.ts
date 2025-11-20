@@ -114,7 +114,7 @@ export class IncrementalUpdateManager {
    * 保存索引状态
    * @param state 索引状态
    */
-  async saveState(state: IndexState): Promise<void> {
+  saveState(state: IndexState): void {
     try {
       if (!this.context) {
         console.warn("VSCode 上下文未初始化，无法保存状态");
@@ -247,7 +247,7 @@ export class IncrementalUpdateManager {
   /**
    * 清除索引状态（用于强制全量更新）
    */
-  async clearState(): Promise<void> {
+  clearState(): void {
     try {
       if (!this.context) {
         console.warn("VSCode 上下文未初始化");

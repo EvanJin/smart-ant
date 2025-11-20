@@ -358,14 +358,10 @@ export class Workspace {
    * @param forceFullRebuild 是否强制全量重建
    * @returns Merkle 树统计信息和变更信息
    */
-  async buildCodeIndexIncremental(
+  buildCodeIndexIncremental(
     config?: ChunkConfig,
     forceFullRebuild: boolean = false
-  ): Promise<{
-    stats: MerkleTreeStats;
-    changes: FileChange[];
-    isIncremental: boolean;
-  }> {
+  ): { stats: MerkleTreeStats; changes: FileChange[]; isIncremental: boolean } {
     console.log(
       `开始${forceFullRebuild ? "全量" : "增量"}构建代码索引，工作区: ${this.path}`
     );
@@ -411,7 +407,7 @@ export class Workspace {
     stats.buildTime = Number(endTime - startTime) / 1_000_000;
 
     // 保存索引状态
-    await this.saveIndexState(codeFiles, stats);
+    this.saveIndexState(codeFiles, stats);
 
     console.log(`代码索引构建完成，耗时: ${stats.buildTime}ms`);
     console.log(`模式: ${isIncremental ? "增量更新" : "全量构建"}`);
@@ -476,10 +472,7 @@ export class Workspace {
   /**
    * 保存索引状态
    */
-  private async saveIndexState(
-    files: FileInfo[],
-    stats: MerkleTreeStats
-  ): Promise<void> {
+  private saveIndexState(files: FileInfo[], stats: MerkleTreeStats): void {
     const fileHashes: Record<string, string> = {};
 
     for (const file of files) {
@@ -500,14 +493,14 @@ export class Workspace {
       totalChunks: stats.totalChunks,
     };
 
-    await this.incrementalManager.saveState(state);
+    this.incrementalManager.saveState(state);
   }
 
   /**
    * 清除索引状态（强制下次全量更新）
    */
-  async clearIndexState(): Promise<void> {
-    await this.incrementalManager.clearState();
+  clearIndexState(): void {
+    this.incrementalManager.clearState();
   }
 
   /**

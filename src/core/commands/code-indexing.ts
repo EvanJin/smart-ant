@@ -259,7 +259,7 @@ export class CodeIndexingCommand extends BaseCommand {
 
             // 增量构建代码索引
             const { stats, changes, isIncremental } =
-              await this.workspace.buildCodeIndexIncremental(
+              this.workspace.buildCodeIndexIncremental(
                 {
                   maxChunkSize: 4096,
                   minChunkSize: 512,
