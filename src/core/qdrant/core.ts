@@ -354,7 +354,7 @@ export class QdrantCoreClient {
         filter: {
           must: [
             {
-              key: "relativePath",
+              key: "relative_path",
               match: {
                 value: relativePath,
               },
@@ -403,7 +403,7 @@ export class QdrantCoreClient {
       const must: any[] = [];
       if (filters.filePath) {
         must.push({
-          key: "relativePath",
+          key: "relative_path",
           match: {
             value: filters.filePath,
           },
@@ -411,7 +411,7 @@ export class QdrantCoreClient {
       }
       if (filters.minLine !== undefined) {
         must.push({
-          key: "startLine",
+          key: "start_line",
           range: {
             gte: filters.minLine,
           },
@@ -419,7 +419,7 @@ export class QdrantCoreClient {
       }
       if (filters.maxLine !== undefined) {
         must.push({
-          key: "endLine",
+          key: "end_line",
           range: {
             lte: filters.maxLine,
           },
